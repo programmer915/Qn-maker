@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.12.2/mammoth.browser.min.js"></script>
 <script src="https://unpkg.com/docx@8.2.4/build/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.13.216/legacy/build/pdf.min.js"></script>
 <style>
   :root{
     --ink:#1C2B4A; --ink-light:#51607E; --paper:#F6F2E7; --paper-line:#DED5BD;
@@ -61,7 +63,8 @@
   .upload-row:last-child{border-bottom:none;}
 
   .filters{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
-  select, input[type=text], input[type=number]{font-family:'IBM Plex Sans'; font-size:12.5px; padding:6px 8px; border:1px solid var(--paper-line); border-radius:2px; background:var(--white); color:var(--ink);}
+  select, input[type=text], input[type=number], input[type=password]{font-family:'IBM Plex Sans'; font-size:12.5px; padding:6px 8px; border:1px solid var(--paper-line); border-radius:2px; background:var(--white); color:var(--ink);}
+  #auth-tab-login.active, #auth-tab-signup.active{background:var(--ink); color:var(--white); border-color:var(--ink);}
 
   .qcard{border-bottom:1px solid var(--paper-line); padding:14px 0;}
   .qcard:last-child{border-bottom:none;}
@@ -125,7 +128,34 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="wrap" id="auth-wrap" style="max-width:420px;">
+  <div class="hero">
+    <div class="kicker">question bank &amp; paper generator</div>
+    <h1>Sign in to your question bank</h1>
+    <p class="sub">Your uploads, verified questions, and generated papers are saved to your account and follow you across devices.</p>
+  </div>
+  <div class="card">
+    <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
+      <button class="btn ghost small active" id="auth-tab-login" type="button">Log in</button>
+      <button class="btn ghost small" id="auth-tab-signup" type="button">Sign up</button>
+    </div>
+    <input type="text" id="auth-email" placeholder="Email" style="width:100%; margin-bottom:8px;">
+    <input type="password" id="auth-password" placeholder="Password (min 6 characters)" style="width:100%; margin-bottom:8px;">
+    <p class="hint" id="auth-status" style="min-height:16px;"></p>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn" id="auth-submit" type="button">Log in</button>
+      <button class="btn ghost small" id="auth-forgot" type="button">Forgot password?</button>
+    </div>
+  </div>
+</div>
+
+<div id="app-bar" style="display:none; max-width:840px; margin:0 auto; padding:14px 20px 0; justify-content:flex-end; gap:10px; align-items:center;">
+  <span class="hint mono" id="auth-whoami"></span>
+  <button class="btn ghost small" id="auth-signout" type="button">Sign out</button>
+</div>
+
+<div class="wrap" id="app-wrap" style="display:none;">
 
   <div class="hero">
     <div class="kicker">question bank &amp; paper generator</div>
@@ -166,6 +196,22 @@
       <p class="hint" id="manual-status" style="margin-top:8px;"></p>
       <div class="btn-row" style="margin-top:0;">
         <button class="btn" id="manual-add" type="button">Add to question bank</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>OCR upload (scanned PDFs, images, .txt, .docx)</h3>
+      <p class="hint">For source material that isn't a clean structured question bank — a scanned worksheet, a photographed page, a plain text file, or a docx that didn't parse cleanly — this pulls out the raw text (entirely in your browser) so you can review it and copy pieces into the manual-entry form above.</p>
+      <div class="dropzone" id="ocr-dropzone">
+        <div id="ocr-dz-label">Click to choose a PDF, image, .txt, or .docx file, or drag one here</div>
+        <input type="file" id="ocr-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.txt,.docx">
+      </div>
+      <p class="hint" id="ocr-status" style="margin-top:10px;"></p>
+      <div class="qedit-label" id="ocr-result-label" style="display:none;">Extracted text (edit freely, then send it into a manual-entry box)</div>
+      <div class="qedit" id="ocr-result" contenteditable="true" style="display:none; white-space:pre-wrap;"></div>
+      <div class="btn-row" id="ocr-actions" style="display:none;">
+        <button class="btn ghost small" id="ocr-send-question" type="button">Send to manual Question box</button>
+        <button class="btn ghost small" id="ocr-send-answer" type="button">Send to manual Answer box</button>
       </div>
     </div>
 
@@ -252,7 +298,37 @@
 
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js';
+import {
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut, sendPasswordResetEmail
+} from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js';
+import {
+  getFirestore, doc, getDoc, setDoc
+} from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js';
+import {
+  getStorage, ref, uploadString, getDownloadURL
+} from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-storage.js';
+
+// TODO: replace with YOUR OWN Firebase project's config — see SETUP.md.
+// This is safe to leave visible in client code; it is not a secret key.
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+const storage = getStorage(fbApp);
+let currentUser = null;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.13.216/legacy/build/pdf.worker.min.js';
+
 /* =====================================================================
    SANITIZATION — mammoth output is trusted-ish (your own file) but we
    still strip anything executable before it ever touches innerHTML.
@@ -269,7 +345,7 @@ function sanitizeFragment(html){
       }
       [...el.attributes].forEach(attr=>{
         const name = attr.name.toLowerCase();
-        if(el.tagName === 'IMG' && name === 'src' && attr.value.startsWith('data:image/')) return;
+        if(el.tagName === 'IMG' && name === 'src' && (attr.value.startsWith('data:image/') || /^https:\/\/firebasestorage\.(googleapis\.com|app)\//.test(attr.value))) return;
         el.removeAttribute(attr.name);
       });
       walk(el);
@@ -348,24 +424,50 @@ function parseQuestionBankHtml(html, sourceFileName){
 function titleCase(s){ return s.replace(/\w\S*/g, t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase()); }
 
 /* =====================================================================
-   STATE — one combined object, persisted to the browser's localStorage
-   so the bank and generated sets survive a page reload or the browser
-   being closed (cleared only if the user clears their browser data).
+   STATE — one combined object per signed-in teacher, persisted to that
+   user's Firestore document (users/{uid}/appstate/main). Survives
+   reload, browser close, and follows the teacher across devices.
+   Embedded images are offloaded to Firebase Storage before saving, so
+   the Firestore document (capped at 1MB) stays small.
    ===================================================================== */
-const STORAGE_KEY = 'paper-trail-state';
 let state = { uploads: [], bank: [], usedIds: [], sets: [] };
 let stateLoaded = false;
 
 async function loadState(){
+  if(!currentUser){ stateLoaded = true; return; }
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw) state = JSON.parse(raw);
-  }catch(e){ /* no saved state yet, or storage unavailable — start fresh */ }
+    const snap = await getDoc(doc(db, 'users', currentUser.uid, 'appstate', 'main'));
+    if(snap.exists()) state = snap.data();
+  }catch(e){ console.error('load failed', e); alert('Could not load your saved question bank — check your connection and refresh.'); }
   stateLoaded = true;
 }
+async function offloadImagesToStorage(){
+  for(const q of state.bank){
+    for(const field of ['bodyHtml','answerHtml']){
+      const html = q[field];
+      if(!html || !html.includes('data:image/')) continue;
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      const imgs = [...div.querySelectorAll('img[src^="data:image/"]')];
+      for(const img of imgs){
+        try{
+          const dataUrl = img.getAttribute('src');
+          const path = `users/${currentUser.uid}/images/${q.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const sref = ref(storage, path);
+          await uploadString(sref, dataUrl, 'data_url');
+          img.setAttribute('src', await getDownloadURL(sref));
+        }catch(e){ console.error('image upload failed', e); }
+      }
+      q[field] = div.innerHTML;
+    }
+  }
+}
 async function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ console.error('save failed', e); }
+  if(!currentUser) return;
+  try{
+    await offloadImagesToStorage();
+    await setDoc(doc(db, 'users', currentUser.uid, 'appstate', 'main'), state);
+  }catch(e){ console.error('save failed', e); alert('Could not save to your account — check your connection and try again.'); }
 }
 
 /* =====================================================================
@@ -487,6 +589,85 @@ document.getElementById('manual-add').addEventListener('click', async ()=>{
   document.getElementById('next-0').disabled = state.bank.length === 0;
   buildStepper();
 });
+
+/* ---- OCR upload (pdf / image / txt / docx -> raw text, all in-browser) ---- */
+let tesseractWorker = null;
+async function getTesseractWorker(){
+  if(!tesseractWorker) tesseractWorker = await Tesseract.createWorker('eng');
+  return tesseractWorker;
+}
+async function ocrImageFile(file){
+  const worker = await getTesseractWorker();
+  const { data: { text } } = await worker.recognize(file);
+  return text;
+}
+async function ocrPdfFile(file){
+  const statusEl = document.getElementById('ocr-status');
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const worker = await getTesseractWorker();
+  let fullText = '';
+  for(let p=1; p<=pdf.numPages; p++){
+    statusEl.textContent = `OCR-ing page ${p} of ${pdf.numPages}…`;
+    const page = await pdf.getPage(p);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const { data: { text } } = await worker.recognize(canvas);
+    fullText += (fullText?'\n\n':'') + `--- Page ${p} ---\n` + text;
+  }
+  return fullText;
+}
+async function handleOcrFile(file){
+  const statusEl = document.getElementById('ocr-status');
+  const resultEl = document.getElementById('ocr-result');
+  const labelEl = document.getElementById('ocr-result-label');
+  const actionsEl = document.getElementById('ocr-actions');
+  statusEl.textContent = `Reading ${file.name}…`;
+  resultEl.style.display = 'none'; labelEl.style.display = 'none'; actionsEl.style.display = 'none';
+  const name = file.name.toLowerCase();
+  try{
+    let text = '';
+    if(name.endsWith('.txt')){
+      text = await file.text();
+    }else if(name.endsWith('.docx')){
+      const buf = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: buf });
+      text = result.value;
+    }else if(name.endsWith('.pdf') || file.type === 'application/pdf'){
+      text = await ocrPdfFile(file);
+    }else if(file.type.startsWith('image/')){
+      text = await ocrImageFile(file);
+    }else{
+      statusEl.textContent = 'Unsupported file type — use a PDF, an image, .txt, or .docx.';
+      return;
+    }
+    resultEl.innerText = text.trim() || '(no text detected)';
+    resultEl.style.display = 'block'; labelEl.style.display = 'block'; actionsEl.style.display = 'flex';
+    statusEl.textContent = `Done — extracted ${text.trim().split(/\s+/).filter(Boolean).length} words from ${file.name}. Review below, then send it to a manual-entry box.`;
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = 'Could not read that file: ' + err.message;
+  }
+  document.getElementById('ocr-file-input').value = '';
+}
+document.getElementById('ocr-dropzone').addEventListener('click', ()=>document.getElementById('ocr-file-input').click());
+document.getElementById('ocr-file-input').addEventListener('change', e=>{ if(e.target.files[0]) handleOcrFile(e.target.files[0]); });
+['dragover','dragleave','drop'].forEach(evt=>{
+  document.getElementById('ocr-dropzone').addEventListener(evt, e=>{
+    e.preventDefault();
+    document.getElementById('ocr-dropzone').classList.toggle('drag', evt==='dragover');
+    if(evt==='drop' && e.dataTransfer.files[0]) handleOcrFile(e.dataTransfer.files[0]);
+  });
+});
+document.getElementById('ocr-send-question').addEventListener('click', ()=>{
+  document.getElementById('manual-question').innerText = document.getElementById('ocr-result').innerText;
+});
+document.getElementById('ocr-send-answer').addEventListener('click', ()=>{
+  document.getElementById('manual-answer').innerText = document.getElementById('ocr-result').innerText;
+});
+
 
 document.getElementById('next-0').addEventListener('click', ()=>{ initBankFilters(); renderBank(); goTo(1); });
 
@@ -759,23 +940,40 @@ function imageTypeFromDataUrl(dataUrl){
   if(t === 'jpeg') t = 'jpg';
   return ['png','jpg','gif','bmp','svg'].includes(t) ? t : 'png';
 }
-function loadImageDims(dataUrl){
+function blobTypeToDocxType(mime){
+  if(mime === 'image/jpeg') return 'jpg';
+  if(mime === 'image/gif') return 'gif';
+  if(mime === 'image/bmp') return 'bmp';
+  if(mime === 'image/svg+xml') return 'svg';
+  return 'png';
+}
+function loadImageDims(src){
   return new Promise(resolve=>{
     const img = new Image();
     img.onload = ()=>resolve({w: img.naturalWidth||300, h: img.naturalHeight||200});
     img.onerror = ()=>resolve({w:300, h:200});
-    img.src = dataUrl;
+    img.src = src;
   });
 }
 async function imgRunFromEl(el){
   const src = el.getAttribute('src') || '';
-  if(!src.startsWith('data:image/')) return null;
   try{
-    const data = dataUrlToUint8Array(src);
+    let data, type;
+    if(src.startsWith('data:image/')){
+      data = dataUrlToUint8Array(src);
+      type = imageTypeFromDataUrl(src);
+    }else if(src.startsWith('https://')){
+      const resp = await fetch(src);
+      const blob = await resp.blob();
+      data = new Uint8Array(await blob.arrayBuffer());
+      type = blobTypeToDocxType(blob.type);
+    }else{
+      return null;
+    }
     const {w,h} = await loadImageDims(src);
     const maxW = 400; // keeps embedded images a sane printed size
     const scale = w > maxW ? maxW/w : 1;
-    return new docx.ImageRun({ data, type: imageTypeFromDataUrl(src), transformation: { width: Math.round(w*scale)||maxW, height: Math.round(h*scale)||250 } });
+    return new docx.ImageRun({ data, type, transformation: { width: Math.round(w*scale)||maxW, height: Math.round(h*scale)||250 } });
   }catch(e){ console.error('image embed failed', e); return null; }
 }
 async function runsForNode(node){
@@ -1016,9 +1214,10 @@ function goTo(i){
 }
 
 /* =====================================================================
-   INIT
+   AUTH — gates the app behind sign-in; each teacher's data lives under
+   their own Firestore/Storage paths (see firestore.rules / storage.rules).
    ===================================================================== */
-(async function init(){
+async function startApp(){
   await loadState();
   renderUploadList();
   populateManualDatalists();
@@ -1027,7 +1226,59 @@ function goTo(i){
   if(state.sets.length){ activeSetIndex = state.sets.length-1; }
   buildStepper();
   goTo(0);
-})();
+}
+
+let authMode = 'login';
+function setAuthMode(mode){
+  authMode = mode;
+  document.getElementById('auth-tab-login').classList.toggle('active', mode==='login');
+  document.getElementById('auth-tab-signup').classList.toggle('active', mode==='signup');
+  document.getElementById('auth-submit').textContent = mode==='login' ? 'Log in' : 'Create account';
+  document.getElementById('auth-status').textContent = '';
+}
+document.getElementById('auth-tab-login').addEventListener('click', ()=>setAuthMode('login'));
+document.getElementById('auth-tab-signup').addEventListener('click', ()=>setAuthMode('signup'));
+document.getElementById('auth-submit').addEventListener('click', async ()=>{
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const statusEl = document.getElementById('auth-status');
+  if(!email || !password){ statusEl.textContent = 'Enter both an email and a password.'; return; }
+  statusEl.textContent = 'Working…';
+  try{
+    if(authMode === 'login') await signInWithEmailAndPassword(auth, email, password);
+    else await createUserWithEmailAndPassword(auth, email, password);
+  }catch(err){ statusEl.textContent = err.message.replace('Firebase: ',''); }
+});
+document.getElementById('auth-forgot').addEventListener('click', async ()=>{
+  const email = document.getElementById('auth-email').value.trim();
+  const statusEl = document.getElementById('auth-status');
+  if(!email){ statusEl.textContent = 'Enter your email first, then tap "Forgot password?".'; return; }
+  try{
+    await sendPasswordResetEmail(auth, email);
+    statusEl.textContent = 'Password reset email sent — check your inbox.';
+  }catch(err){ statusEl.textContent = err.message.replace('Firebase: ',''); }
+});
+document.getElementById('auth-signout').addEventListener('click', ()=>signOut(auth));
+
+onAuthStateChanged(auth, async user=>{
+  currentUser = user;
+  if(user){
+    document.getElementById('auth-wrap').style.display = 'none';
+    document.getElementById('app-bar').style.display = 'flex';
+    document.getElementById('app-wrap').style.display = 'block';
+    document.getElementById('auth-whoami').textContent = user.email;
+    state = { uploads: [], bank: [], usedIds: [], sets: [] };
+    stateLoaded = false;
+    await startApp();
+  }else{
+    document.getElementById('auth-wrap').style.display = 'block';
+    document.getElementById('app-bar').style.display = 'none';
+    document.getElementById('app-wrap').style.display = 'none';
+    document.getElementById('auth-password').value = '';
+  }
+});
+setAuthMode('login');
 </script>
+
 </body>
 </html>

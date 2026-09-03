@@ -1,0 +1,15 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Question/answer images live under users/{their own uid}/images/...
+    // Note: Firebase's getDownloadURL() issues a token-bearing URL that is
+    // shareable by anyone who has the link (this is normal Firebase Storage
+    // behaviour, needed so <img> tags and the .docx export can load the
+    // image) — these rules control who can upload/list/delete, not who can
+    // open a link they were given.
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "paper-trail",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Question bank & exam paper generator for teachers, with per-account cloud storage and in-browser OCR.",
+  "scripts": {
+    "deploy": "firebase deploy"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}
