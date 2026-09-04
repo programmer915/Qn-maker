@@ -307,24 +307,20 @@ import {
 import {
   getFirestore, doc, getDoc, setDoc
 } from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js';
-import {
-  getStorage, ref, uploadString, getDownloadURL
-} from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-storage.js';
 
 // TODO: replace with YOUR OWN Firebase project's config — see SETUP.md.
 // This is safe to leave visible in client code; it is not a secret key.
 const firebaseConfig = {
-  apiKey: "AIzaSyDGmuIRkIHhB1xbhpJiqI82ejRu1_4eGRI",
-  authDomain: "paper-trail-700fb.firebaseapp.com",
-  projectId: "paper-trail-700fb",
-  storageBucket: "paper-trail-700fb.firebasestorage.app",
-  messagingSenderId: "721631882983",
-  appId: "1:721631882983:web:eb885b7a85fceecbc67c42"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
-const storage = getStorage(fbApp);
 let currentUser = null;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.13.216/legacy/build/pdf.worker.min.js';
@@ -345,7 +341,7 @@ function sanitizeFragment(html){
       }
       [...el.attributes].forEach(attr=>{
         const name = attr.name.toLowerCase();
-        if(el.tagName === 'IMG' && name === 'src' && (attr.value.startsWith('data:image/') || /^https:\/\/firebasestorage\.(googleapis\.com|app)\//.test(attr.value))) return;
+        if(el.tagName === 'IMG' && name === 'src' && attr.value.startsWith('data:image/')) return;
         el.removeAttribute(attr.name);
       });
       walk(el);
@@ -427,8 +423,12 @@ function titleCase(s){ return s.replace(/\w\S*/g, t=>t.charAt(0).toUpperCase()+t
    STATE — one combined object per signed-in teacher, persisted to that
    user's Firestore document (users/{uid}/appstate/main). Survives
    reload, browser close, and follows the teacher across devices.
-   Embedded images are offloaded to Firebase Storage before saving, so
-   the Firestore document (capped at 1MB) stays small.
+   Images are NOT persisted to the cloud (that would need Firebase
+   Storage, which now requires the paid Blaze plan) — they still work
+   fully during the current browser session (bank, preview, docx export),
+   but a cloud save strips them to a placeholder so the rest of the
+   question survives. Reloading/signing in elsewhere will show that
+   placeholder in place of any image.
    ===================================================================== */
 let state = { uploads: [], bank: [], usedIds: [], sets: [] };
 let stateLoaded = false;
@@ -441,32 +441,31 @@ async function loadState(){
   }catch(e){ console.error('load failed', e); alert('Could not load your saved question bank — check your connection and refresh.'); }
   stateLoaded = true;
 }
-async function offloadImagesToStorage(){
-  for(const q of state.bank){
-    for(const field of ['bodyHtml','answerHtml']){
-      const html = q[field];
-      if(!html || !html.includes('data:image/')) continue;
-      const div = document.createElement('div');
-      div.innerHTML = html;
-      const imgs = [...div.querySelectorAll('img[src^="data:image/"]')];
-      for(const img of imgs){
-        try{
-          const dataUrl = img.getAttribute('src');
-          const path = `users/${currentUser.uid}/images/${q.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-          const sref = ref(storage, path);
-          await uploadString(sref, dataUrl, 'data_url');
-          img.setAttribute('src', await getDownloadURL(sref));
-        }catch(e){ console.error('image upload failed', e); }
-      }
-      q[field] = div.innerHTML;
-    }
-  }
+function stripImagesFromHtml(html){
+  if(!html || !html.includes('<img')) return html;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  div.querySelectorAll('img').forEach(img=>{
+    const placeholder = document.createElement('span');
+    placeholder.textContent = '[image omitted — not saved to cloud storage]';
+    img.replaceWith(placeholder);
+  });
+  return div.innerHTML;
+}
+function cloudSafeState(){
+  return {
+    ...state,
+    bank: state.bank.map(q=>({
+      ...q,
+      bodyHtml: stripImagesFromHtml(q.bodyHtml),
+      answerHtml: stripImagesFromHtml(q.answerHtml),
+    })),
+  };
 }
 async function saveState(){
   if(!currentUser) return;
   try{
-    await offloadImagesToStorage();
-    await setDoc(doc(db, 'users', currentUser.uid, 'appstate', 'main'), state);
+    await setDoc(doc(db, 'users', currentUser.uid, 'appstate', 'main'), cloudSafeState());
   }catch(e){ console.error('save failed', e); alert('Could not save to your account — check your connection and try again.'); }
 }
 
@@ -940,40 +939,23 @@ function imageTypeFromDataUrl(dataUrl){
   if(t === 'jpeg') t = 'jpg';
   return ['png','jpg','gif','bmp','svg'].includes(t) ? t : 'png';
 }
-function blobTypeToDocxType(mime){
-  if(mime === 'image/jpeg') return 'jpg';
-  if(mime === 'image/gif') return 'gif';
-  if(mime === 'image/bmp') return 'bmp';
-  if(mime === 'image/svg+xml') return 'svg';
-  return 'png';
-}
-function loadImageDims(src){
+function loadImageDims(dataUrl){
   return new Promise(resolve=>{
     const img = new Image();
     img.onload = ()=>resolve({w: img.naturalWidth||300, h: img.naturalHeight||200});
     img.onerror = ()=>resolve({w:300, h:200});
-    img.src = src;
+    img.src = dataUrl;
   });
 }
 async function imgRunFromEl(el){
   const src = el.getAttribute('src') || '';
+  if(!src.startsWith('data:image/')) return null;
   try{
-    let data, type;
-    if(src.startsWith('data:image/')){
-      data = dataUrlToUint8Array(src);
-      type = imageTypeFromDataUrl(src);
-    }else if(src.startsWith('https://')){
-      const resp = await fetch(src);
-      const blob = await resp.blob();
-      data = new Uint8Array(await blob.arrayBuffer());
-      type = blobTypeToDocxType(blob.type);
-    }else{
-      return null;
-    }
+    const data = dataUrlToUint8Array(src);
     const {w,h} = await loadImageDims(src);
     const maxW = 400; // keeps embedded images a sane printed size
     const scale = w > maxW ? maxW/w : 1;
-    return new docx.ImageRun({ data, type, transformation: { width: Math.round(w*scale)||maxW, height: Math.round(h*scale)||250 } });
+    return new docx.ImageRun({ data, type: imageTypeFromDataUrl(src), transformation: { width: Math.round(w*scale)||maxW, height: Math.round(h*scale)||250 } });
   }catch(e){ console.error('image embed failed', e); return null; }
 }
 async function runsForNode(node){
@@ -1215,7 +1197,8 @@ function goTo(i){
 
 /* =====================================================================
    AUTH — gates the app behind sign-in; each teacher's data lives under
-   their own Firestore/Storage paths (see firestore.rules / storage.rules).
+   their own Firestore path (see firestore.rules). Images aren't synced
+   to the cloud (see the STATE block above) — no Firebase Storage needed.
    ===================================================================== */
 async function startApp(){
   await loadState();

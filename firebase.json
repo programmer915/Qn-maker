@@ -8,15 +8,11 @@
       "README.md",
       "SETUP.md",
       "firestore.rules",
-      "storage.rules",
       "package.json",
       "package-lock.json"
     ]
   },
   "firestore": {
     "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
   }
 }

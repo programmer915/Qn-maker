@@ -42,26 +42,28 @@ Firebase project that **you** create and own (it's free on Firebase's
 2. Choose **production mode** (the rules in this repo lock it down
    correctly) and pick a region close to you.
 
-## 5. Turn on Storage
+(There's no Storage step here — this version doesn't use Firebase
+Storage, since Google now requires a paid Blaze plan to use it at all.
+Images work fully while your tab is open but aren't saved to the cloud;
+see "Known limits" in `README.md`.)
 
-1. Go to **Build → Storage → Get started**, same region as Firestore.
-2. Accept the default bucket.
+## 5. Deploy the security rules
 
-## 6. Deploy the security rules
+The rules in `firestore.rules` restrict every teacher to their own
+data — deploy them so they actually take effect (until you do, Firestore
+defaults to locked-down and nothing will save). Easiest way — no
+terminal needed: open **Firestore Database → Rules** in the console,
+paste in the contents of `firestore.rules`, and click **Publish**.
 
-The rules in `firestore.rules` and `storage.rules` restrict every
-teacher to their own data — deploy them so they actually take effect
-(until you do, Firestore/Storage default to locked-down and nothing will
-save):
-
+If you'd rather use the CLI instead:
 ```bash
 npm install -g firebase-tools     # one-time, if you don't have it
 firebase login
 firebase use --add                # pick your project, e.g. paper-trail-xxxxx
-firebase deploy --only firestore:rules,storage:rules
+firebase deploy --only firestore:rules
 ```
 
-## 7. Host the site
+## 6. Host the site
 
 You can host `index.html` anywhere static (GitHub Pages, Firebase
 Hosting, Netlify, ...) — it doesn't need a server. If you want to use
@@ -72,29 +74,21 @@ firebase deploy --only hosting
 ```
 
 If you're hosting elsewhere (e.g. GitHub Pages), just upload `index.html`
-— the `firebase.json`/`*.rules`/`package.json` files here are only used
-by the `firebase` CLI for the rules/hosting deploy above, not by the
-browser.
+— the `firebase.json`/`firestore.rules`/`package.json` files here are
+only used by the `firebase` CLI for the rules/hosting deploy above, not
+by the browser.
 
-## 8. Try it
+## 7. Try it
 
 Open the site, tap **Sign up**, create an account with an email +
 password. You should land in the app; anything you upload/add/generate
 now saves to your account and will still be there next time you sign in
-from any device.
+from any device (except images — see "Known limits" in `README.md`).
 
 ## Troubleshooting
 
 - **"Missing or insufficient permissions" on save** — the rules from
-  step 6 haven't been deployed yet, or you're not signed in.
-- **Images don't show up in a downloaded .docx** — the browser fetches
-  the image bytes from its Firebase Storage URL to embed them; if your
-  browser's console shows a CORS error on that fetch, run this once
-  (needs `gsutil`, part of the Google Cloud SDK):
-  ```bash
-  echo '[{"origin": ["*"], "method": ["GET"], "maxAgeSeconds": 3600}]' > cors.json
-  gsutil cors set cors.json gs://YOUR_PROJECT.appspot.com
-  ```
+  step 5 haven't been published/deployed yet, or you're not signed in.
 - **OCR silently does nothing / console shows a 404 for `pdf.worker.min.js`**
   — the pdf.js CDN build in `index.html` changed or is unreachable; check
   the browser console for the exact failing URL and swap in a current one
