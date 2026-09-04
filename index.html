@@ -116,8 +116,19 @@
   .paper-preview .pq .qn{font-weight:600;}
   .paper-preview .pq .qm{float:right; color:var(--ink-light); font-size:11.5px;}
   .paper-preview .pq img{max-width:100%; height:auto;}
+  .paper-preview .pq-options{margin:4px 0 0 4px; font-size:12.5px;}
+  .paper-preview .pq-options div{margin-bottom:2px;}
+  .paper-preview .qanswer{margin-top:6px; padding:6px 9px; background:var(--paper); border-radius:2px; font-size:12.5px;}
 
   .empty-note{font-size:12.5px; color:var(--ink-light); padding:10px 0;}
+  .meta-summary{background:var(--paper); border:1px solid var(--paper-line); border-radius:2px; padding:10px 12px; font-size:12.5px; margin:10px 0;}
+  .meta-summary .mrow{display:flex; justify-content:space-between; gap:8px; padding:3px 0;}
+  .import-q{border:1px solid var(--paper-line); border-radius:3px; padding:12px; margin-bottom:10px; background:var(--white);}
+  .import-q .ifields{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;}
+  .import-q .ifields input, .import-q .ifields select{max-width:150px;}
+  .opt-row{display:flex; gap:6px; align-items:center; margin-bottom:4px;}
+  .opt-row .opt-label{font-family:'IBM Plex Mono',monospace; font-size:12px; width:18px; flex-shrink:0;}
+  .opt-row input[type=radio]{accent-color:var(--red);}
   ::selection{background:var(--red); color:var(--white);}
   @media print{
     body{background:#fff;}
@@ -181,21 +192,68 @@
       <h3>Add a question manually</h3>
       <p class="hint">Write your own question and answer — with images if needed — straight into the bank, without going through a source file.</p>
       <div class="filters">
-        <input type="text" id="manual-subject" placeholder="Subject (e.g. Physics)" list="manual-subject-list" style="min-width:160px;">
+        <input type="text" id="manual-subject" placeholder="Subject (e.g. Physics)" list="manual-subject-list" style="min-width:140px;">
         <datalist id="manual-subject-list"></datalist>
-        <input type="number" id="manual-marks" placeholder="Marks" step="0.5" min="0" style="max-width:100px;">
-        <input type="text" id="manual-type" placeholder="Type (e.g. Short Answer)" list="manual-type-list" style="min-width:160px;">
+        <input type="text" id="manual-topic" placeholder="Topic/Chapter (optional)" list="manual-topic-list" style="min-width:160px;">
+        <datalist id="manual-topic-list"></datalist>
+        <input type="text" id="manual-section" placeholder="Section (optional, e.g. Section A)" list="manual-section-list" style="min-width:160px;">
+        <datalist id="manual-section-list"></datalist>
+      </div>
+      <div class="filters">
+        <input type="number" id="manual-marks" placeholder="Marks" step="0.5" min="0" style="max-width:90px;">
+        <input type="number" id="manual-negmarks" placeholder="Negative marks (optional)" step="0.25" min="0" style="max-width:150px;">
+        <input type="text" id="manual-type" placeholder="Type (e.g. MCQ, Short Answer)" list="manual-type-list" style="min-width:160px;">
         <datalist id="manual-type-list"></datalist>
       </div>
       <div class="qedit-label">Question (text + images)</div>
       <div class="qedit" contenteditable="true" id="manual-question"></div>
       <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" id="manual-question-img"></label>
-      <div class="qedit-label">Answer (text + images)</div>
+
+      <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; margin:12px 0 6px; cursor:pointer;">
+        <input type="checkbox" id="manual-has-options"> This is a multiple-choice question (add options)
+      </label>
+      <div id="manual-options-block" style="display:none;">
+        <div class="opt-row"><span class="opt-label mono">A)</span><input type="text" id="manual-opt-a" placeholder="Option A" style="flex:1;"><input type="radio" name="manual-correct-opt" value="A" title="Correct answer"></div>
+        <div class="opt-row"><span class="opt-label mono">B)</span><input type="text" id="manual-opt-b" placeholder="Option B" style="flex:1;"><input type="radio" name="manual-correct-opt" value="B" title="Correct answer"></div>
+        <div class="opt-row"><span class="opt-label mono">C)</span><input type="text" id="manual-opt-c" placeholder="Option C (optional)" style="flex:1;"><input type="radio" name="manual-correct-opt" value="C" title="Correct answer"></div>
+        <div class="opt-row"><span class="opt-label mono">D)</span><input type="text" id="manual-opt-d" placeholder="Option D (optional)" style="flex:1;"><input type="radio" name="manual-correct-opt" value="D" title="Correct answer"></div>
+        <p class="hint">Tick the radio next to the correct option. The Answer box below is only needed for descriptive/numerical questions.</p>
+      </div>
+
+      <div class="qedit-label">Answer (text + images — descriptive/numerical questions only)</div>
       <div class="qedit" contenteditable="true" id="manual-answer"></div>
       <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" id="manual-answer-img"></label>
       <p class="hint" id="manual-status" style="margin-top:8px;"></p>
       <div class="btn-row" style="margin-top:0;">
         <button class="btn" id="manual-add" type="button">Add to question bank</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Import / paste questions</h3>
+      <p class="hint">Paste a block of plain text — numbered questions, options, and answers in more or less any reasonable format — and this will try to split it into structured questions for you to review before anything is added to the bank. Nothing is added until you review the preview below and click "Add to question bank".</p>
+
+      <div class="qedit-label">Common defaults for this paste (optional — only fills in what the text itself doesn't specify)</div>
+      <div class="filters">
+        <input type="text" id="import-def-subject" placeholder="Subject" list="manual-subject-list" style="min-width:130px;">
+        <input type="text" id="import-def-topic" placeholder="Topic/Chapter" list="manual-topic-list" style="min-width:140px;">
+        <input type="text" id="import-def-section" placeholder="Section" list="manual-section-list" style="min-width:130px;">
+        <input type="number" id="import-def-marks" placeholder="Marks" step="0.5" min="0" style="max-width:80px;">
+        <input type="text" id="import-def-type" placeholder="Type" list="manual-type-list" style="min-width:110px;">
+        <input type="number" id="import-def-negmarks" placeholder="Neg. marks" step="0.25" min="0" style="max-width:110px;">
+      </div>
+
+      <div class="qedit-label">Paste text</div>
+      <textarea id="import-textarea" rows="10" style="width:100%; font-family:'IBM Plex Sans'; font-size:13px; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--white); color:var(--ink); resize:vertical;" placeholder="1. Which of the following is a method of underground mining?&#10;A) Open cast mining&#10;B) Room and pillar mining&#10;C) Hydraulic mining&#10;D) Placer mining&#10;Answer: B&#10;&#10;2. ..."></textarea>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn ghost small" id="import-parse-btn" type="button">Parse text</button>
+      </div>
+
+      <div id="import-meta-slot"></div>
+      <div id="import-preview-slot"></div>
+      <div class="btn-row" id="import-commit-row" style="display:none;">
+        <button class="btn" id="import-commit-btn" type="button">Add to question bank</button>
+        <button class="btn ghost small" id="import-discard-btn" type="button">Discard preview</button>
       </div>
     </div>
 
@@ -232,6 +290,7 @@
       <p class="hint">Every question was matched to an answer automatically from the source file and is marked verified by default. Uncheck any that need a second look — only verified questions can go into a paper. <span id="verify-progress"></span></p>
       <div class="filters">
         <select id="f-subject"><option value="">All subjects</option></select>
+        <select id="f-topic"><option value="">All topics</option></select>
         <select id="f-type"><option value="">All types</option></select>
         <select id="f-verified">
           <option value="">Any status</option>
@@ -310,15 +369,13 @@ import {
 
 // TODO: replace with YOUR OWN Firebase project's config — see SETUP.md.
 // This is safe to leave visible in client code; it is not a secret key.
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDGmuIRkIHhB1xbhpJiqI82ejRu1_4eGRI",
-  authDomain: "paper-trail-700fb.firebaseapp.com",
-  projectId: "paper-trail-700fb",
-  storageBucket: "paper-trail-700fb.firebasestorage.app",
-  messagingSenderId: "721631882983",
-  appId: "1:721631882983:web:eb885b7a85fceecbc67c42",
-  measurementId: "G-2LBYL6ETWD"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -413,6 +470,8 @@ function parseQuestionBankHtml(html, sourceFileName){
       bodyHtml: sanitizeFragment(questionBody.trim()),
       answerHtml: sanitizeFragment(answerBody.trim()),
       topic: '',
+      options: null,
+      negativeMarks: null,
       verified: true,
       answerVerified: true,
     });
@@ -420,6 +479,164 @@ function parseQuestionBankHtml(html, sourceFileName){
   return {meta, questions, warnings};
 }
 function titleCase(s){ return s.replace(/\w\S*/g, t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase()); }
+
+/* =====================================================================
+   BULK TEXT PARSER — staged, not one giant regex:
+   1. normalizeImportText()   — clean whitespace/line endings
+   2. detectExamMeta()        — scan the WHOLE text for section rules,
+                                 subject rules, negative marking, duration,
+                                 total marks, instructions — independent of
+                                 question parsing
+   3. splitIntoQuestionBlocks()— find question-number boundaries, tolerant
+                                 of "1.", "1)", "Q1.", "Q.1", "Q 1." etc.
+   4. parseOptionsAndAnswer()  — per block: pull out A)/B)/C)/D)-style
+                                 options and an Answer/Ans line, tolerant of
+                                 punctuation/spacing differences
+   5. parseBulkText()          — glue stages together: a detected value
+                                 from the text always wins; the "common
+                                 defaults" form only fills what's still
+                                 missing; anything still unknown stays null
+                                 for the teacher to fill in during review.
+   ===================================================================== */
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function normalizeImportText(text){
+  return text.replace(/\r\n?/g, '\n').replace(/\u00A0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function detectExamMeta(text){
+  const meta = { sections: [], subjectRules: [], negativeMarks: null, duration: null, totalMarks: null, instructions: [] };
+  const lines = text.split('\n');
+
+  const sectionRe = /Section\s+([A-Za-z0-9]+)\s*[-–—:]\s*(\d+(?:\.\d+)?)\s*marks?\s*each/gi;
+  let m;
+  while((m = sectionRe.exec(text))){
+    meta.sections.push({ name: 'Section ' + m[1].toUpperCase(), marksEach: parseFloat(m[2]), matchIndex: m.index });
+  }
+
+  const subjectRuleRe = /([A-Za-z][A-Za-z &]{2,30}?):\s*(\d+)\s*questions?\s*[×x*]\s*(\d+(?:\.\d+)?)\s*marks?/gi;
+  while((m = subjectRuleRe.exec(text))){
+    meta.subjectRules.push({ subject: titleCase(m[1].trim()), count: parseInt(m[2],10), marksEach: parseFloat(m[3]), matchIndex: null });
+  }
+  // If the same subject name also appears alone on its own line elsewhere
+  // (a heading introducing that subject's block of questions), remember
+  // where, so questions after it can inherit the subject.
+  meta.subjectRules.forEach(rule=>{
+    const headingRe = new RegExp('^[ \\t]*' + escapeRegExp(rule.subject) + '\\s*:?\\s*$', 'im');
+    const hm = text.match(headingRe);
+    if(hm) rule.matchIndex = hm.index;
+  });
+
+  const negMatch = text.match(/[-−]\s*(\d+(?:\.\d+)?)\s*(?:marks?\s*)?for\s*(?:each\s*)?(?:incorrect|wrong)/i);
+  if(negMatch) meta.negativeMarks = parseFloat(negMatch[1]);
+
+  const durMatch = text.match(/duration\s*[:\-]?\s*([\d.]+\s*(?:hours?|hrs?|h\b|minutes?|mins?|m\b))/i);
+  if(durMatch) meta.duration = durMatch[1].trim();
+
+  const totalMatch = text.match(/total\s*marks\s*[:\-]?\s*(\d+)/i);
+  if(totalMatch) meta.totalMarks = parseInt(totalMatch[1],10);
+
+  const instrIdx = lines.findIndex(l=>/^\s*instructions?\s*[:\-]?\s*$/i.test(l));
+  if(instrIdx >= 0){
+    for(let i=instrIdx+1; i<lines.length; i++){
+      const l = lines[i];
+      if(!l.trim()) break;
+      if(/^\s*(?:Q\.?\s*)?\d{1,3}[.).:]\s+/.test(l)) break;
+      meta.instructions.push(l.trim());
+    }
+  }
+  return meta;
+}
+function sectionAt(examMeta, index){
+  let best = null;
+  for(const s of examMeta.sections) if(s.matchIndex <= index && (!best || s.matchIndex > best.matchIndex)) best = s;
+  return best;
+}
+function subjectRuleAt(examMeta, index){
+  let best = null;
+  for(const r of examMeta.subjectRules) if(r.matchIndex!=null && r.matchIndex <= index && (!best || r.matchIndex > best.matchIndex)) best = r;
+  return best;
+}
+
+function splitIntoQuestionBlocks(text){
+  const qStartRe = /^[ \t]*(?:Q\.?\s*)?(\d{1,3})[.).:]\s+(?=\S)/gm;
+  const starts = [];
+  let m;
+  while((m = qStartRe.exec(text))) starts.push({ index: m.index, contentStart: m.index + m[0].length, number: m[1] });
+  const blocks = [];
+  for(let i=0;i<starts.length;i++){
+    const end = (i+1 < starts.length) ? starts[i+1].index : text.length;
+    blocks.push({ number: starts[i].number, startIndex: starts[i].index, text: text.slice(starts[i].contentStart, end).trim() });
+  }
+  return blocks;
+}
+
+function parseOptionsAndAnswer(blockText){
+  const lines = blockText.split('\n');
+  const optRe = /^[ \t]*[(\[]?([A-Da-d])[)\].:]\s+(.*)$/;
+  const ansRe = /^[ \t]*(?:Answer|Ans)\.?\s*[:\-]?\s*(.*)$/i;
+  let stemLines = [], options = [], answerRaw = null, mode = 'stem';
+  for(const line of lines){
+    const ansMatch = line.match(ansRe);
+    if(ansMatch){ answerRaw = ansMatch[1].trim(); mode = 'answer'; continue; }
+    if(mode === 'answer'){ if(line.trim()) answerRaw = (answerRaw?answerRaw+' ':'') + line.trim(); continue; }
+    const optMatch = line.match(optRe);
+    if(optMatch){ options.push({ label: optMatch[1].toUpperCase(), text: optMatch[2].trim() }); mode = 'options'; continue; }
+    if(mode === 'stem') stemLines.push(line);
+    else if(mode === 'options' && line.trim() && options.length) options[options.length-1].text += ' ' + line.trim();
+  }
+  return { stem: stemLines.join('\n').trim(), options: options.length ? options : null, answerRaw };
+}
+function resolveAnswerHtml(answerRaw, options){
+  if(!answerRaw) return { html: '', letter: null };
+  let mLetter = answerRaw.match(/^\(?([A-Da-d])\)?\s*[.:)]?\s*(.*)$/);
+  if(mLetter && (mLetter[1].length===1) && (options || !mLetter[2])){
+    const letter = mLetter[1].toUpperCase();
+    const opt = options ? options.find(o=>o.label === letter) : null;
+    const rest = opt ? opt.text : mLetter[2];
+    return { html: rest ? `<p><b>${letter})</b> ${escapeHtml(rest)}</p>` : `<p><b>${letter}</b></p>`, letter };
+  }
+  return { html: `<p>${escapeHtml(answerRaw)}</p>`, letter: null };
+}
+
+function parseBulkText(text, commonDefaults){
+  const norm = normalizeImportText(text);
+  const examMeta = detectExamMeta(norm);
+  const blocks = splitIntoQuestionBlocks(norm);
+  const warnings = [];
+  if(!blocks.length) warnings.push('No numbered questions found — expected lines starting with "1.", "Q1.", "Q.1", etc.');
+
+  const questions = blocks.map(b=>{
+    const { stem, options, answerRaw } = parseOptionsAndAnswer(b.text);
+    const marksInline = stem.match(/\[(\d+(?:\.\d+)?)\s*marks?\]/i) || stem.match(/\((\d+(?:\.\d+)?)\s*marks?\)/i);
+    const cleanStem = stem.replace(/\[(\d+(?:\.\d+)?)\s*marks?\]/i,'').replace(/\((\d+(?:\.\d+)?)\s*marks?\)/i,'').trim();
+    const inheritedSection = sectionAt(examMeta, b.startIndex);
+    const inheritedSubjectRule = subjectRuleAt(examMeta, b.startIndex);
+    const { html: answerHtml, letter: answerLetter } = resolveAnswerHtml(answerRaw, options);
+
+    return {
+      id: 'q_' + Math.random().toString(36).slice(2) + Date.now().toString(36),
+      sourceFile: 'Pasted text',
+      qno: b.number,
+      bodyHtml: '<p>' + escapeHtml(cleanStem).replace(/\n/g,'<br>') + '</p>',
+      options: options ? options.map(o=>({ label:o.label, html:'<p>'+escapeHtml(o.text)+'</p>' })) : null,
+      answerHtml, answerLetter,
+      marks: marksInline ? parseFloat(marksInline[1]) : (inheritedSection ? inheritedSection.marksEach : (commonDefaults.marks!=null ? commonDefaults.marks : null)),
+      subject: inheritedSubjectRule ? inheritedSubjectRule.subject : (commonDefaults.subject || null),
+      topic: commonDefaults.topic || '',
+      section: inheritedSection ? inheritedSection.name : (commonDefaults.section || null),
+      type: commonDefaults.type || (options ? 'MCQ' : null),
+      negativeMarks: examMeta.negativeMarks!=null ? examMeta.negativeMarks : (commonDefaults.negativeMarks!=null ? commonDefaults.negativeMarks : null),
+      isInternalChoice: false,
+      verified: false,
+      answerVerified: !!answerRaw,
+    };
+  });
+
+  return { examMeta, questions, warnings };
+}
+
 
 /* =====================================================================
    STATE — one combined object per signed-in teacher, persisted to that
@@ -431,15 +648,40 @@ function titleCase(s){ return s.replace(/\w\S*/g, t=>t.charAt(0).toUpperCase()+t
    but a cloud save strips them to a placeholder so the rest of the
    question survives. Reloading/signing in elsewhere will show that
    placeholder in place of any image.
+
+   SCHEMA_VERSION 2 added: topic, options, negativeMarks fields, and
+   repurposed the pre-existing (previously unused) "section" field to
+   mean an exam section label (e.g. "Section A") used for pattern/paper
+   grouping. normalizeQuestion() below fills sensible defaults for any
+   older question loaded without these fields, so old saved data keeps
+   working unchanged.
    ===================================================================== */
-let state = { uploads: [], bank: [], usedIds: [], sets: [] };
+const SCHEMA_VERSION = 2;
+function normalizeQuestion(q){
+  if(q.topic == null) q.topic = '';
+  if(q.section === undefined) q.section = null;
+  if(q.options === undefined) q.options = null;
+  if(q.negativeMarks === undefined) q.negativeMarks = null;
+  if(q.verified == null) q.verified = false;
+  if(q.answerVerified == null) q.answerVerified = false;
+  return q;
+}
+let state = { uploads: [], bank: [], usedIds: [], sets: [], schemaVersion: SCHEMA_VERSION };
 let stateLoaded = false;
 
 async function loadState(){
   if(!currentUser){ stateLoaded = true; return; }
   try{
     const snap = await getDoc(doc(db, 'users', currentUser.uid, 'appstate', 'main'));
-    if(snap.exists()) state = snap.data();
+    if(snap.exists()){
+      state = snap.data();
+      if(!state.uploads) state.uploads = [];
+      if(!state.bank) state.bank = [];
+      if(!state.usedIds) state.usedIds = [];
+      if(!state.sets) state.sets = [];
+      state.bank.forEach(normalizeQuestion);
+      state.schemaVersion = SCHEMA_VERSION;
+    }
   }catch(e){ console.error('load failed', e); alert('Could not load your saved question bank — check your connection and refresh.'); }
   stateLoaded = true;
 }
@@ -540,8 +782,12 @@ function renderUploadList(){
 function populateManualDatalists(){
   const subjects = [...new Set(state.bank.map(q=>q.subject).filter(Boolean))];
   const types = [...new Set(state.bank.map(q=>q.type).filter(Boolean))];
+  const topics = [...new Set(state.bank.map(q=>q.topic).filter(Boolean))];
+  const sections = [...new Set(state.bank.map(q=>q.section).filter(Boolean))];
   document.getElementById('manual-subject-list').innerHTML = subjects.map(s=>`<option value="${s}">`).join('');
   document.getElementById('manual-type-list').innerHTML = types.map(t=>`<option value="${t}">`).join('');
+  document.getElementById('manual-topic-list').innerHTML = topics.map(t=>`<option value="${t}">`).join('');
+  document.getElementById('manual-section-list').innerHTML = sections.map(s=>`<option value="${s}">`).join('');
 }
 ['manual-question-img','manual-answer-img'].forEach(id=>{
   document.getElementById(id).addEventListener('change', async e=>{
@@ -553,30 +799,50 @@ function populateManualDatalists(){
     e.target.value = '';
   });
 });
+document.getElementById('manual-has-options').addEventListener('change', e=>{
+  document.getElementById('manual-options-block').style.display = e.target.checked ? 'block' : 'none';
+});
 document.getElementById('manual-add').addEventListener('click', async ()=>{
   const statusEl = document.getElementById('manual-status');
   const subject = document.getElementById('manual-subject').value.trim();
+  const topic = document.getElementById('manual-topic').value.trim();
+  const section = document.getElementById('manual-section').value.trim() || null;
   const marksRaw = document.getElementById('manual-marks').value;
   const marks = marksRaw==='' ? null : parseFloat(marksRaw);
+  const negMarksRaw = document.getElementById('manual-negmarks').value;
+  const negativeMarks = negMarksRaw==='' ? null : parseFloat(negMarksRaw);
   const type = document.getElementById('manual-type').value.trim() || null;
   const qEl = document.getElementById('manual-question');
   const aEl = document.getElementById('manual-answer');
+  const hasOptions = document.getElementById('manual-has-options').checked;
 
   if(!subject){ statusEl.textContent = 'Enter a subject first.'; return; }
   if(marks==null || isNaN(marks)){ statusEl.textContent = 'Enter the marks value first.'; return; }
   if(!qEl.textContent.trim() && !qEl.querySelector('img')){ statusEl.textContent = 'Write (or add an image for) the question first.'; return; }
 
+  let options = null, answerHtml;
+  if(hasOptions){
+    const labels = ['a','b','c','d'];
+    const texts = labels.map(l=>document.getElementById('manual-opt-'+l).value.trim());
+    const correct = document.querySelector('input[name="manual-correct-opt"]:checked');
+    if(!texts[0] || !texts[1]){ statusEl.textContent = 'Enter at least options A and B.'; return; }
+    if(!correct){ statusEl.textContent = 'Tick the correct option.'; return; }
+    options = texts.map((t,i)=>({ label: labels[i].toUpperCase(), html: '<p>'+escapeHtml(t)+'</p>' })).filter(o=>o.html !== '<p></p>');
+    const correctOpt = options.find(o=>o.label===correct.value);
+    answerHtml = correctOpt ? `<p><b>${correctOpt.label})</b> ${stripTags(correctOpt.html)}</p>` : '';
+  }else{
+    answerHtml = sanitizeFragment(aEl.innerHTML.trim());
+  }
   const bodyHtml = sanitizeFragment(qEl.innerHTML.trim());
-  const answerHtml = sanitizeFragment(aEl.innerHTML.trim());
   const nextQno = (Math.max(0, ...state.bank.map(q=>parseInt(q.qno)||0)) + 1).toString();
 
   state.bank.push({
     id: 'q_' + Math.random().toString(36).slice(2) + Date.now().toString(36),
     sourceFile: 'Manual entry',
-    qno: nextQno, marks, section: null, subject, type,
+    qno: nextQno, marks, section, subject, type,
     isInternalChoice: false,
-    bodyHtml, answerHtml,
-    topic: '',
+    bodyHtml, answerHtml, options, negativeMarks,
+    topic,
     verified: true,
     answerVerified: true,
   });
@@ -585,6 +851,13 @@ document.getElementById('manual-add').addEventListener('click', async ()=>{
   qEl.innerHTML = '';
   aEl.innerHTML = '';
   document.getElementById('manual-marks').value = '';
+  document.getElementById('manual-negmarks').value = '';
+  if(hasOptions){
+    ['a','b','c','d'].forEach(l=>document.getElementById('manual-opt-'+l).value = '');
+    document.querySelectorAll('input[name="manual-correct-opt"]').forEach(r=>r.checked=false);
+    document.getElementById('manual-has-options').checked = false;
+    document.getElementById('manual-options-block').style.display = 'none';
+  }
   statusEl.textContent = `Added Q${nextQno} (${marks} mark${marks==1?'':'s'}, ${subject}) to the bank, verified by default.`;
   populateManualDatalists();
   document.getElementById('next-0').disabled = state.bank.length === 0;
@@ -669,6 +942,127 @@ document.getElementById('ocr-send-answer').addEventListener('click', ()=>{
   document.getElementById('manual-answer').innerText = document.getElementById('ocr-result').innerText;
 });
 
+/* ---- Import / paste questions (bulk text -> structured preview -> bank) ---- */
+let importDraft = null;
+function escapeAttr(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+function importMetaSummaryHtml(examMeta, warnings){
+  const parts = [];
+  if(examMeta.sections.length) parts.push(`<div class="mrow"><span>Sections detected</span><span>${examMeta.sections.map(s=>`${s.name}: ${s.marksEach} mark${s.marksEach==1?'':'s'} each`).join(', ')}</span></div>`);
+  if(examMeta.subjectRules.length) parts.push(`<div class="mrow"><span>Subject rules detected</span><span>${examMeta.subjectRules.map(r=>`${r.subject}: ${r.count}×${r.marksEach}`).join(', ')}</span></div>`);
+  if(examMeta.negativeMarks!=null) parts.push(`<div class="mrow"><span>Negative marking</span><span>−${examMeta.negativeMarks} per wrong answer</span></div>`);
+  if(examMeta.duration) parts.push(`<div class="mrow"><span>Duration</span><span>${examMeta.duration}</span></div>`);
+  if(examMeta.totalMarks!=null) parts.push(`<div class="mrow"><span>Total marks</span><span>${examMeta.totalMarks}</span></div>`);
+  if(examMeta.instructions.length) parts.push(`<div class="mrow"><span>Instructions</span><span>${examMeta.instructions.join(' ')}</span></div>`);
+  const warnHtml = warnings.length ? `<p class="hint" style="color:var(--amber);">${warnings.join(' ')}</p>` : '';
+  if(!parts.length && !warnings.length) return '';
+  return (parts.length ? `<div class="meta-summary"><b style="font-size:12.5px;">Detected exam metadata (review before importing)</b>${parts.join('')}</div>` : '') + warnHtml;
+}
+function importPreviewCardHtml(q, idx){
+  const opts = q.options;
+  return `<div class="import-q" data-idx="${idx}">
+    <div class="ifields">
+      <input type="text" data-ifield="subject" data-idx="${idx}" placeholder="Subject" value="${escapeAttr(q.subject)}" list="manual-subject-list">
+      <input type="text" data-ifield="topic" data-idx="${idx}" placeholder="Topic" value="${escapeAttr(q.topic)}" list="manual-topic-list">
+      <input type="text" data-ifield="section" data-idx="${idx}" placeholder="Section" value="${escapeAttr(q.section)}" list="manual-section-list">
+      <input type="number" step="0.5" data-ifield="marks" data-idx="${idx}" placeholder="Marks" value="${q.marks!=null?q.marks:''}" style="max-width:80px;">
+      <input type="text" data-ifield="type" data-idx="${idx}" placeholder="Type" value="${escapeAttr(q.type)}" list="manual-type-list">
+      <input type="number" step="0.25" data-ifield="negativeMarks" data-idx="${idx}" placeholder="Neg. marks" value="${q.negativeMarks!=null?q.negativeMarks:''}" style="max-width:100px;">
+    </div>
+    <span class="tag">Q${q.qno}</span>
+    <div class="qedit-label" style="margin-top:8px;">Question</div>
+    <div class="qedit" contenteditable="true" data-ifield="bodyHtml" data-idx="${idx}">${q.bodyHtml}</div>
+    ${opts ? `
+      <div class="qedit-label">Options (tick the correct one)</div>
+      ${opts.map((o,oi)=>`<div class="opt-row">
+        <span class="opt-label mono">${o.label})</span>
+        <input type="text" data-iopt="${oi}" data-idx="${idx}" value="${escapeAttr(stripTags(o.html))}" style="flex:1;">
+        <input type="radio" name="import-correct-${idx}" data-icorrect="${o.label}" data-idx="${idx}" ${q.answerLetter===o.label?'checked':''} title="Correct answer">
+      </div>`).join('')}` : `
+      <div class="qedit-label">Answer</div>
+      <div class="qedit" contenteditable="true" data-ifield="answerHtml" data-idx="${idx}">${q.answerHtml}</div>`}
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn ghost small" data-iremove="${idx}" type="button">✕ Don't import this one</button>
+    </div>
+  </div>`;
+}
+document.getElementById('import-parse-btn').addEventListener('click', ()=>{
+  const text = document.getElementById('import-textarea').value;
+  if(!text.trim()) return;
+  const commonDefaults = {
+    subject: document.getElementById('import-def-subject').value.trim() || null,
+    topic: document.getElementById('import-def-topic').value.trim() || '',
+    section: document.getElementById('import-def-section').value.trim() || null,
+    marks: document.getElementById('import-def-marks').value ? parseFloat(document.getElementById('import-def-marks').value) : null,
+    type: document.getElementById('import-def-type').value.trim() || null,
+    negativeMarks: document.getElementById('import-def-negmarks').value ? parseFloat(document.getElementById('import-def-negmarks').value) : null,
+  };
+  importDraft = parseBulkText(text, commonDefaults);
+  renderImportPreview();
+});
+function renderImportPreview(){
+  const metaSlot = document.getElementById('import-meta-slot');
+  const previewSlot = document.getElementById('import-preview-slot');
+  const commitRow = document.getElementById('import-commit-row');
+  if(!importDraft || !importDraft.questions.length){
+    metaSlot.innerHTML = importDraft ? `<p class="empty-note">${importDraft.warnings.join(' ') || 'Nothing left to import.'}</p>` : '';
+    previewSlot.innerHTML = '';
+    commitRow.style.display = 'none';
+    return;
+  }
+  metaSlot.innerHTML = importMetaSummaryHtml(importDraft.examMeta, importDraft.warnings);
+  previewSlot.innerHTML = `<p class="hint">${importDraft.questions.length} question(s) detected — review/edit below, then add them. They'll start <b>unverified</b>, same as anything else auto-parsed.</p>` +
+    importDraft.questions.map((q,idx)=>importPreviewCardHtml(q, idx)).join('');
+  commitRow.style.display = 'flex';
+
+  previewSlot.querySelectorAll('[data-ifield]').forEach(el=>{
+    const evt = el.tagName === 'INPUT' ? 'input' : 'blur';
+    el.addEventListener(evt, e=>{
+      const idx = +e.currentTarget.dataset.idx, field = e.currentTarget.dataset.ifield;
+      const q = importDraft.questions[idx];
+      if(field === 'marks' || field === 'negativeMarks') q[field] = e.currentTarget.value === '' ? null : parseFloat(e.currentTarget.value);
+      else if(field === 'bodyHtml' || field === 'answerHtml') q[field] = sanitizeFragment(e.currentTarget.innerHTML.trim());
+      else q[field] = e.currentTarget.value.trim() || (field==='topic' ? '' : null);
+    });
+  });
+  previewSlot.querySelectorAll('[data-iopt]').forEach(inp=>inp.addEventListener('input', e=>{
+    const idx = +e.currentTarget.dataset.idx, oi = +e.currentTarget.dataset.iopt;
+    importDraft.questions[idx].options[oi].html = '<p>'+escapeHtml(e.currentTarget.value)+'</p>';
+  }));
+  previewSlot.querySelectorAll('[data-icorrect]').forEach(radio=>radio.addEventListener('change', e=>{
+    const idx = +e.currentTarget.dataset.idx, q = importDraft.questions[idx];
+    q.answerLetter = e.currentTarget.dataset.icorrect;
+    const opt = q.options.find(o=>o.label===q.answerLetter);
+    q.answerHtml = opt ? `<p><b>${opt.label})</b> ${stripTags(opt.html)}</p>` : '';
+  }));
+  previewSlot.querySelectorAll('[data-iremove]').forEach(btn=>btn.addEventListener('click', e=>{
+    importDraft.questions.splice(+e.currentTarget.dataset.iremove, 1);
+    renderImportPreview();
+  }));
+}
+document.getElementById('import-commit-btn').addEventListener('click', async ()=>{
+  if(!importDraft || !importDraft.questions.length) return;
+  const toAdd = importDraft.questions.map(q=>{
+    const {answerLetter, ...rest} = q;
+    return normalizeQuestion(rest);
+  });
+  state.bank.push(...toAdd);
+  await saveState();
+  const count = toAdd.length;
+  document.getElementById('import-textarea').value = '';
+  document.getElementById('import-meta-slot').innerHTML = '';
+  document.getElementById('import-preview-slot').innerHTML = `<p class="hint">Added ${count} question(s) to the bank — unverified, ready for review in the Question Bank step.</p>`;
+  document.getElementById('import-commit-row').style.display = 'none';
+  importDraft = null;
+  populateManualDatalists();
+  document.getElementById('next-0').disabled = state.bank.length === 0;
+  buildStepper();
+});
+document.getElementById('import-discard-btn').addEventListener('click', ()=>{
+  importDraft = null;
+  document.getElementById('import-meta-slot').innerHTML = '';
+  document.getElementById('import-preview-slot').innerHTML = '';
+  document.getElementById('import-commit-row').style.display = 'none';
+});
 
 document.getElementById('next-0').addEventListener('click', ()=>{ initBankFilters(); renderBank(); goTo(1); });
 
@@ -677,8 +1071,10 @@ document.getElementById('next-0').addEventListener('click', ()=>{ initBankFilter
    ===================================================================== */
 function initBankFilters(){
   const subjects = [...new Set(state.bank.map(q=>q.subject).filter(Boolean))];
+  const topics = [...new Set(state.bank.map(q=>q.topic).filter(Boolean))];
   const types = [...new Set(state.bank.map(q=>q.type).filter(Boolean))];
   document.getElementById('f-subject').innerHTML = '<option value="">All subjects</option>' + subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
+  document.getElementById('f-topic').innerHTML = '<option value="">All topics</option>' + topics.map(t=>`<option value="${t}">${t}</option>`).join('');
   document.getElementById('f-type').innerHTML = '<option value="">All types</option>' + types.map(t=>`<option value="${t}">${t}</option>`).join('');
 }
 const editingIds = new Set();
@@ -695,15 +1091,20 @@ function qcardHtml(q, editing){
       <div class="qmeta">
         <span class="tag">Q${q.qno}</span>
         ${q.subject ? `<span class="tag">${q.subject}</span>` : ''}
+        ${q.topic ? `<span class="tag">${q.topic}</span>` : ''}
+        ${q.section ? `<span class="tag">${q.section}</span>` : ''}
         ${q.type ? `<span class="tag">${q.type}</span>` : ''}
         ${q.marks!=null ? `<span class="tag">${q.marks} mark${q.marks==1?'':'s'}</span>` : `<span class="status-pill pill-amber">marks not detected</span>`}
+        ${q.negativeMarks!=null ? `<span class="tag">−${q.negativeMarks}</span>` : ''}
         ${q.isInternalChoice ? `<span class="status-pill pill-grey">internal choice</span>` : ''}
       </div>`;
+  const optionsReadHtml = q.options ? `<div class="qbody">${q.options.map(o=>`<p><b>${o.label})</b> ${o.html.replace(/^<p>|<\/p>$/g,'')}</p>`).join('')}</div>` : '';
   if(!editing){
     return `
     <div class="qcard" data-id="${q.id}">
       ${metaHtml}
       <div class="qbody">${q.bodyHtml}</div>
+      ${optionsReadHtml}
       <div class="qanswer"><b>Answer:</b> ${q.answerHtml || '<i>none captured</i>'}</div>
       <div class="qcontrols">
         <label><input type="checkbox" data-verify-id="${q.id}" ${q.verified?'checked':''}> verified</label>
@@ -712,12 +1113,28 @@ function qcardHtml(q, editing){
       </div>
     </div>`;
   }
+  const optionsEditHtml = q.options ? `
+      <div class="qedit-label">Options (tick the correct one)</div>
+      ${q.options.map((o,oi)=>`<div class="opt-row">
+        <span class="opt-label mono">${o.label})</span>
+        <input type="text" data-edit-opt="${oi}" data-owner-id="${q.id}" value="${escapeAttr(stripTags(o.html))}" style="flex:1;">
+        <input type="radio" name="edit-correct-${q.id}" data-edit-correct="${o.label}" data-owner-id="${q.id}" ${q.answerHtml && q.answerHtml.includes(`<b>${o.label})</b>`)?'checked':''} title="Correct answer">
+      </div>`).join('')}` : '';
   return `
     <div class="qcard" data-id="${q.id}">
       ${metaHtml}
+      <div class="ifields" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+        <input type="text" data-meta-field="subject" data-owner-id="${q.id}" placeholder="Subject" value="${escapeAttr(q.subject)}" list="manual-subject-list" style="max-width:130px;">
+        <input type="text" data-meta-field="topic" data-owner-id="${q.id}" placeholder="Topic" value="${escapeAttr(q.topic)}" list="manual-topic-list" style="max-width:140px;">
+        <input type="text" data-meta-field="section" data-owner-id="${q.id}" placeholder="Section" value="${escapeAttr(q.section)}" list="manual-section-list" style="max-width:130px;">
+        <input type="number" step="0.5" data-meta-field="marks" data-owner-id="${q.id}" placeholder="Marks" value="${q.marks!=null?q.marks:''}" style="max-width:80px;">
+        <input type="text" data-meta-field="type" data-owner-id="${q.id}" placeholder="Type" value="${escapeAttr(q.type)}" list="manual-type-list" style="max-width:130px;">
+        <input type="number" step="0.25" data-meta-field="negativeMarks" data-owner-id="${q.id}" placeholder="Neg. marks" value="${q.negativeMarks!=null?q.negativeMarks:''}" style="max-width:100px;">
+      </div>
       <div class="qedit-label">Question (text + images)</div>
       <div class="qedit" contenteditable="true" data-edit-body-id="${q.id}">${q.bodyHtml}</div>
       <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" data-img-id="${q.id}" data-img-target="body"></label>
+      ${optionsEditHtml}
       <div class="qedit-label">Answer (text + images)</div>
       <div class="qedit" contenteditable="true" data-edit-answer-id="${q.id}">${q.answerHtml}</div>
       <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" data-img-id="${q.id}" data-img-target="answer"></label>
@@ -729,10 +1146,12 @@ function qcardHtml(q, editing){
 }
 function renderBank(){
   const fSubject = document.getElementById('f-subject').value;
+  const fTopic = document.getElementById('f-topic').value;
   const fType = document.getElementById('f-type').value;
   const fVerified = document.getElementById('f-verified').value;
   let list = state.bank.filter(q=>
     (!fSubject || q.subject===fSubject) &&
+    (!fTopic || q.topic===fTopic) &&
     (!fType || q.type===fType) &&
     (!fVerified || (fVerified==='yes') === q.verified)
   );
@@ -765,7 +1184,26 @@ function renderBank(){
       const bodyEl = el.querySelector(`[data-edit-body-id="${id}"]`);
       const ansEl = el.querySelector(`[data-edit-answer-id="${id}"]`);
       if(bodyEl) q.bodyHtml = sanitizeFragment(bodyEl.innerHTML.trim());
-      if(ansEl) q.answerHtml = sanitizeFragment(ansEl.innerHTML.trim());
+
+      el.querySelectorAll(`[data-meta-field][data-owner-id="${id}"]`).forEach(inp=>{
+        const field = inp.dataset.metaField;
+        if(field==='marks' || field==='negativeMarks') q[field] = inp.value==='' ? null : parseFloat(inp.value);
+        else q[field] = inp.value.trim() || (field==='topic' ? '' : null);
+      });
+
+      if(q.options){
+        el.querySelectorAll(`[data-edit-opt][data-owner-id="${id}"]`).forEach(inp=>{
+          const oi = +inp.dataset.editOpt;
+          if(q.options[oi]) q.options[oi].html = '<p>'+escapeHtml(inp.value)+'</p>';
+        });
+        const correctRadio = el.querySelector(`[data-edit-correct][data-owner-id="${id}"]:checked`);
+        if(correctRadio){
+          const opt = q.options.find(o=>o.label===correctRadio.dataset.editCorrect);
+          if(opt) q.answerHtml = `<p><b>${opt.label})</b> ${stripTags(opt.html)}</p>`;
+        }
+      }else if(ansEl){
+        q.answerHtml = sanitizeFragment(ansEl.innerHTML.trim());
+      }
       await saveState();
     }
     editingIds.delete(id);
@@ -787,28 +1225,48 @@ function updateVerifyProgress(){
   const done = state.bank.filter(q=>q.verified).length;
   document.getElementById('verify-progress').textContent = `${done} of ${state.bank.length} verified.`;
 }
-['f-subject','f-type','f-verified'].forEach(id=>document.getElementById(id).addEventListener('change', renderBank));
+['f-subject','f-topic','f-type','f-verified'].forEach(id=>document.getElementById(id).addEventListener('change', renderBank));
 document.getElementById('back-1').addEventListener('click', ()=>goTo(0));
 document.getElementById('next-1').addEventListener('click', ()=>{ buildPatternPanel(); goTo(2); });
 
 /* =====================================================================
    STEP 2 — PATTERN
-   Pattern is a grid of (Subject × Marks) -> requested count, e.g.
-   Physics 5-mark ×2, Physics 3-mark ×3, Biology 5-mark ×4, ...
+   Pattern is a grid of (Subject × Topic × Marks) -> requested count.
+   Topic is optional per subject — if none of a subject's verified
+   questions have a topic set, that subject renders as a flat Subject ×
+   Marks list exactly as before; topics only appear as a sub-grouping
+   when actually in use, e.g. Physics > Mechanics > 5-mark ×2.
    ===================================================================== */
-let blueprint = {}; // "Subject||Marks" -> requested count
+let blueprint = {}; // "Subject||Topic||Marks" -> requested count
 
-function keyOf(subject, marks){ return subject + '||' + marks; }
-function parseKey(k){ const idx = k.lastIndexOf('||'); return {subject: k.slice(0,idx), marks: parseFloat(k.slice(idx+2))}; }
+function keyOf(subject, topic, marks){ return subject + '||' + (topic||'') + '||' + marks; }
+function parseKey(k){
+  const parts = k.split('||');
+  const marks = parseFloat(parts[parts.length-1]);
+  const topic = parts[parts.length-2];
+  const subject = parts.slice(0, parts.length-2).join('||');
+  return {subject, topic, marks};
+}
 function cssId(s){ return s.replace(/[^a-zA-Z0-9]/g,'_'); }
 
-function eligiblePool(subject, marks, excludeIds){
+function eligiblePool(subject, topic, marks, excludeIds){
   return state.bank.filter(q=>
     q.verified === true &&
     q.subject === subject &&
+    (q.topic||'') === (topic||'') &&
     q.marks === marks &&
     !excludeIds.has(q.id)
   );
+}
+function bpRowHtml(k, m){
+  return `<div class="bp-row" data-key="${k}">
+    <div>${m}-mark question<span class="avail" id="avail-${cssId(k)}"></span></div>
+    <div class="stepper-input">
+      <button data-dir="-1" data-key="${k}">−</button>
+      <span class="val" id="val-${cssId(k)}">${blueprint[k]}</span>
+      <button data-dir="1" data-key="${k}">+</button>
+    </div>
+  </div>`;
 }
 function buildPatternPanel(){
   const verified = state.bank.filter(q=>q.verified && q.subject && q.marks!=null);
@@ -821,27 +1279,31 @@ function buildPatternPanel(){
     return;
   }
 
-  const subjectMarks = {};
-  subjects.forEach(s=>{
-    subjectMarks[s] = [...new Set(verified.filter(q=>q.subject===s).map(q=>q.marks))].sort((a,b)=>b-a);
-    subjectMarks[s].forEach(m=>{ const k=keyOf(s,m); if(blueprint[k]==null) blueprint[k]=0; });
-  });
-
-  wrap.innerHTML = subjects.map(s=>`
-    <div style="margin-bottom:14px;">
+  wrap.innerHTML = subjects.map(s=>{
+    const subjQs = verified.filter(q=>q.subject===s);
+    const topics = [...new Set(subjQs.map(q=>q.topic||''))];
+    const usesTopics = topics.length > 1 || (topics.length===1 && topics[0]!=='');
+    if(!usesTopics){
+      const marksList = [...new Set(subjQs.map(q=>q.marks))].sort((a,b)=>b-a);
+      marksList.forEach(m=>{ const k=keyOf(s,'',m); if(blueprint[k]==null) blueprint[k]=0; });
+      return `<div style="margin-bottom:14px;">
+        <div style="font-weight:600; font-size:13.5px; margin-bottom:2px;">${s}</div>
+        ${marksList.map(m=>bpRowHtml(keyOf(s,'',m), m)).join('')}
+      </div>`;
+    }
+    return `<div style="margin-bottom:14px;">
       <div style="font-weight:600; font-size:13.5px; margin-bottom:2px;">${s}</div>
-      ${subjectMarks[s].map(m=>{
-        const k = keyOf(s,m);
-        return `<div class="bp-row" data-key="${k}">
-          <div>${m}-mark question<span class="avail" id="avail-${cssId(k)}"></span></div>
-          <div class="stepper-input">
-            <button data-dir="-1" data-key="${k}">−</button>
-            <span class="val" id="val-${cssId(k)}">${blueprint[k]}</span>
-            <button data-dir="1" data-key="${k}">+</button>
-          </div>
+      ${topics.map(t=>{
+        const topicQs = subjQs.filter(q=>(q.topic||'')===t);
+        const marksList = [...new Set(topicQs.map(q=>q.marks))].sort((a,b)=>b-a);
+        marksList.forEach(m=>{ const k=keyOf(s,t,m); if(blueprint[k]==null) blueprint[k]=0; });
+        return `<div style="margin:8px 0 8px 14px;">
+          <div style="font-size:12.5px; color:var(--ink-light); margin-bottom:2px;">${t || '(No topic)'}</div>
+          ${marksList.map(m=>bpRowHtml(keyOf(s,t,m), m)).join('')}
         </div>`;
       }).join('')}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   wrap.querySelectorAll('button').forEach(b=>b.addEventListener('click', e=>{
     const k = e.currentTarget.dataset.key, dir = +e.currentTarget.dataset.dir;
@@ -855,8 +1317,8 @@ function updatePatternTotals(){
   let requestedTotal = 0, achievableTotal = 0;
   const usedIds = new Set(state.usedIds);
   Object.keys(blueprint).forEach(k=>{
-    const {subject, marks} = parseKey(k);
-    const pool = eligiblePool(subject, marks, usedIds);
+    const {subject, topic, marks} = parseKey(k);
+    const pool = eligiblePool(subject, topic, marks, usedIds);
     const requested = blueprint[k]||0;
     const avail = pool.length;
     const shortfall = Math.max(0, requested-avail);
@@ -885,10 +1347,13 @@ document.getElementById('next-2').addEventListener('click', async ()=>{
 
 /* =====================================================================
    STEP 3 — GENERATE
-   Questions are still pooled per (Subject × Marks) cell from the pattern,
-   but the final paper/key is laid out as one flat sequence ordered from
-   the lowest marks-value to the highest (all 1-mark qs together, then
-   all 2-mark qs, etc.) — subject no longer drives the paper's layout.
+   Questions are pooled per (Subject × Topic × Marks) cell from the
+   pattern. The final paper/key ordering: if any picked question has an
+   exam Section (e.g. "Section A"), the paper is grouped by section first
+   (matching how a real sectioned exam is laid out), each section
+   internally ordered by marks ascending. If no section is in play, the
+   whole set is one flat sequence ordered lowest-to-highest marks, same
+   as before.
    ===================================================================== */
 let activeSetIndex = 0;
 
@@ -899,8 +1364,8 @@ function createSet(name){
   const keys = Object.keys(blueprint).filter(k=>blueprint[k]>0);
   const picks = []; const shortage = {}; const requested = {}; const available = {};
   keys.forEach(k=>{
-    const {subject, marks} = parseKey(k);
-    const pool = eligiblePool(subject, marks, excludeIds);
+    const {subject, topic, marks} = parseKey(k);
+    const pool = eligiblePool(subject, topic, marks, excludeIds);
     requested[k] = blueprint[k];
     available[k] = pool.length;
     const picked = shuffle(pool).slice(0, blueprint[k]);
@@ -908,7 +1373,12 @@ function createSet(name){
     picked.forEach(p=>excludeIds.add(p.id));
     picks.push(...picked);
   });
-  picks.sort((a,b)=> (a.marks-b.marks) || (a.subject||'').localeCompare(b.subject||'') || (parseInt(a.qno)-parseInt(b.qno)));
+  const usesSections = picks.some(q=>q.section);
+  if(usesSections){
+    picks.sort((a,b)=> (a.section||'\uffff').localeCompare(b.section||'\uffff') || (a.marks-b.marks) || (a.subject||'').localeCompare(b.subject||'') || (parseInt(a.qno)-parseInt(b.qno)));
+  }else{
+    picks.sort((a,b)=> (a.marks-b.marks) || (a.subject||'').localeCompare(b.subject||'') || (parseInt(a.qno)-parseInt(b.qno)));
+  }
   const set = {name, questions: picks, shortage, requested, available};
   idsOfSet(set).forEach(id=>state.usedIds.push(id));
   return set;
@@ -1024,37 +1494,54 @@ function questionMarksLine(qNum, marks){
     spacing:{before:160}
   });
 }
+async function optionsDocxParagraphs(q){
+  if(!q.options) return [];
+  const paras = [];
+  for(const o of q.options){
+    const runs = await buildRunsFromChildren((()=>{ const d=document.createElement('div'); d.innerHTML=o.html; return d; })());
+    paras.push(new docx.Paragraph({ children: [new docx.TextRun({text:`${o.label}) `, bold:true}), ...runs], indent:{left:360}, spacing:{after:60} }));
+  }
+  return paras;
+}
 async function buildPaperDocxDoc(set, achieved, requestedTotal){
+  const usesSections = set.questions.some(q=>q.section);
   const children = [
     new docx.Paragraph({ text: 'QUESTION PAPER', heading: docx.HeadingLevel.HEADING_4 }),
     new docx.Paragraph({ text: set.name, heading: docx.HeadingLevel.HEADING_1 }),
     new docx.Paragraph({ text: `Marks in this set: ${achieved} of ${requestedTotal} requested`, spacing:{after:200} }),
   ];
-  let qNum = 0, lastMarks;
+  let qNum = 0, lastLabel;
   for(const q of set.questions){
-    if(q.marks !== lastMarks){
-      children.push(new docx.Paragraph({ text: `${q.marks!=null?q.marks:'?'}-mark Questions`, heading: docx.HeadingLevel.HEADING_2, spacing:{before:280, after:120} }));
-      lastMarks = q.marks;
+    const label = groupLabelFor(q, usesSections);
+    if(label !== lastLabel){
+      children.push(new docx.Paragraph({ text: usesSections ? label.toUpperCase() : label, heading: docx.HeadingLevel.HEADING_2, spacing:{before:280, after:120} }));
+      lastLabel = label;
     }
     qNum++;
     children.push(questionMarksLine(qNum, q.marks));
     children.push(...await htmlToDocxParagraphs(q.bodyHtml));
+    children.push(...await optionsDocxParagraphs(q));
   }
   return new docx.Document({ sections: [{ properties:{}, children }] });
 }
 async function buildKeyDocxDoc(set){
+  const usesSections = set.questions.some(q=>q.section);
   const children = [
     new docx.Paragraph({ text: 'ANSWER KEY', heading: docx.HeadingLevel.HEADING_4 }),
     new docx.Paragraph({ text: set.name, heading: docx.HeadingLevel.HEADING_1, spacing:{after:200} }),
   ];
-  let qNum = 0, lastMarks;
+  let qNum = 0, lastLabel;
   for(const q of set.questions){
-    if(q.marks !== lastMarks){
-      children.push(new docx.Paragraph({ text: `${q.marks!=null?q.marks:'?'}-mark Questions`, heading: docx.HeadingLevel.HEADING_2, spacing:{before:280, after:120} }));
-      lastMarks = q.marks;
+    const label = groupLabelFor(q, usesSections);
+    if(label !== lastLabel){
+      children.push(new docx.Paragraph({ text: usesSections ? label.toUpperCase() : label, heading: docx.HeadingLevel.HEADING_2, spacing:{before:280, after:120} }));
+      lastLabel = label;
     }
     qNum++;
     children.push(questionMarksLine(qNum, q.marks));
+    children.push(...await htmlToDocxParagraphs(q.bodyHtml));
+    children.push(...await optionsDocxParagraphs(q));
+    children.push(new docx.Paragraph({ children:[new docx.TextRun({text:'Answer: ', bold:true})], spacing:{before:60} }));
     children.push(...await htmlToDocxParagraphs(q.answerHtml || '<p><i>no answer captured</i></p>'));
     children.push(new docx.Paragraph({ text: `source: Q${q.qno}${q.answerVerified?' · answer checked':' · answer not checked'}`, spacing:{after:100} }));
   }
@@ -1131,36 +1618,49 @@ function renderBothPreviews(){
   const shortageKeys = Object.keys(set.shortage||{});
   document.getElementById('shortage-slot').innerHTML = shortageKeys.length
     ? `<div class="shortage-banner">⚠ Short of verified, unused questions for: ${shortageKeys.map(k=>{
-        const {subject, marks} = parseKey(k);
-        return `${subject} ${marks}-mark (need ${set.shortage[k]} more)`;
+        const {subject, topic, marks} = parseKey(k);
+        return `${subject}${topic?' › '+topic:''} ${marks}-mark (need ${set.shortage[k]} more)`;
       }).join(', ')}. This set is incomplete — verify more questions or lower the pattern counts.</div>`
     : '';
   renderPaperDoc(set, achieved, requestedTotal);
   renderKeyDoc(set);
 }
+function groupLabelFor(q, usesSections){
+  return usesSections ? (q.section || 'Other') : `${q.marks!=null?q.marks:'?'}-mark Questions`;
+}
+function optionsHtmlFor(q){
+  if(!q.options) return '';
+  const labels = 'ABCDEFGH';
+  return `<div class="pq-options">${q.options.map((o,i)=>`<div>${o.label||labels[i]}) ${o.html.replace(/^<p>|<\/p>$/g,'')}</div>`).join('')}</div>`;
+}
 function renderPaperDoc(set, achieved, requestedTotal){
-  let qNum=0, html='', lastMarks=undefined;
+  const usesSections = set.questions.some(q=>q.section);
+  let qNum=0, html='', lastLabel=undefined;
   set.questions.forEach(q=>{
-    if(q.marks !== lastMarks){
-      html += `<div class="psection">${q.marks!=null?q.marks:'?'}-mark Questions</div>`;
-      lastMarks = q.marks;
+    const label = groupLabelFor(q, usesSections);
+    if(label !== lastLabel){
+      html += `<div class="psection">${usesSections ? label.toUpperCase() : label}</div>`;
+      lastLabel = label;
     }
     qNum++;
-    html += `<div class="pq"><span class="qn">Q${qNum}.</span> <span class="qm">[${q.marks!=null?q.marks:'?'}]</span><div>${q.bodyHtml}</div></div>`;
+    html += `<div class="pq"><span class="qn">Q${qNum}.</span> <span class="qm">[${q.marks!=null?q.marks:'?'}]</span><div>${q.bodyHtml}</div>${optionsHtmlFor(q)}</div>`;
   });
   document.getElementById('paper-preview').innerHTML = `
     <div class="ph-top"><div class="mono" style="font-size:11px;color:var(--ink-light);">QUESTION PAPER</div><h2>${set.name}</h2><div class="hint">Marks in this set: ${achieved} of ${requestedTotal} requested</div></div>
     ${html || '<p class="empty-note">No questions available for this pattern.</p>'}`;
 }
 function renderKeyDoc(set){
-  let qNum=0, html='', lastMarks=undefined;
+  const usesSections = set.questions.some(q=>q.section);
+  let qNum=0, html='', lastLabel=undefined;
   set.questions.forEach(q=>{
-    if(q.marks !== lastMarks){
-      html += `<div class="psection">${q.marks!=null?q.marks:'?'}-mark Questions</div>`;
-      lastMarks = q.marks;
+    const label = groupLabelFor(q, usesSections);
+    if(label !== lastLabel){
+      html += `<div class="psection">${usesSections ? label.toUpperCase() : label}</div>`;
+      lastLabel = label;
     }
     qNum++;
-    html += `<div class="pq"><span class="qn">Q${qNum}.</span> <span class="qm">[${q.marks!=null?q.marks:'?'}]</span><div>${q.answerHtml || '<i>no answer captured</i>'}</div>
+    html += `<div class="pq"><span class="qn">Q${qNum}.</span> <span class="qm">[${q.marks!=null?q.marks:'?'}]</span><div>${q.bodyHtml}</div>${optionsHtmlFor(q)}
+      <div class="qanswer"><b>Answer:</b> ${q.answerHtml || '<i>no answer captured</i>'}</div>
       <span class="tag mono">source: Q${q.qno}${q.answerVerified?' · ✓ answer checked':' · ⚠ answer not checked'}</span></div>`;
   });
   document.getElementById('key-preview').innerHTML = `
