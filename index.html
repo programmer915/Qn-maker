@@ -64,7 +64,7 @@
 
   .filters{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
   select, input[type=text], input[type=number], input[type=password]{font-family:'IBM Plex Sans'; font-size:12.5px; padding:6px 8px; border:1px solid var(--paper-line); border-radius:2px; background:var(--white); color:var(--ink);}
-  #auth-tab-login.active, #auth-tab-signup.active{background:var(--ink); color:var(--white); border-color:var(--ink);}
+  .tab-btn.active{background:var(--ink); color:var(--white); border-color:var(--ink);}
 
   .qcard{border-bottom:1px solid var(--paper-line); padding:14px 0;}
   .qcard:last-child{border-bottom:none;}
@@ -148,8 +148,8 @@
   </div>
   <div class="card">
     <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
-      <button class="btn ghost small active" id="auth-tab-login" type="button">Log in</button>
-      <button class="btn ghost small" id="auth-tab-signup" type="button">Sign up</button>
+      <button class="btn ghost small tab-btn active" id="auth-tab-login" type="button">Log in</button>
+      <button class="btn ghost small tab-btn" id="auth-tab-signup" type="button">Sign up</button>
     </div>
     <input type="text" id="auth-email" placeholder="Email" style="width:100%; margin-bottom:8px;">
     <input type="password" id="auth-password" placeholder="Password (min 6 characters)" style="width:100%; margin-bottom:8px;">
@@ -189,88 +189,124 @@
     </div>
 
     <div class="card">
-      <h3>Add a question manually</h3>
-      <p class="hint">Write your own question and answer — with images if needed — straight into the bank, without going through a source file.</p>
-      <div class="filters">
-        <input type="text" id="manual-subject" placeholder="Subject (e.g. Physics)" list="manual-subject-list" style="min-width:140px;">
-        <datalist id="manual-subject-list"></datalist>
-        <input type="text" id="manual-topic" placeholder="Topic/Chapter (optional)" list="manual-topic-list" style="min-width:160px;">
-        <datalist id="manual-topic-list"></datalist>
-        <input type="text" id="manual-section" placeholder="Section (optional, e.g. Section A)" list="manual-section-list" style="min-width:160px;">
-        <datalist id="manual-section-list"></datalist>
-      </div>
-      <div class="filters">
-        <input type="number" id="manual-marks" placeholder="Marks" step="0.5" min="0" style="max-width:90px;">
-        <input type="number" id="manual-negmarks" placeholder="Negative marks (optional)" step="0.25" min="0" style="max-width:150px;">
-        <input type="text" id="manual-type" placeholder="Type (e.g. MCQ, Short Answer)" list="manual-type-list" style="min-width:160px;">
-        <datalist id="manual-type-list"></datalist>
-      </div>
-      <div class="qedit-label">Question (text + images)</div>
-      <div class="qedit" contenteditable="true" id="manual-question"></div>
-      <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" id="manual-question-img"></label>
-
-      <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; margin:12px 0 6px; cursor:pointer;">
-        <input type="checkbox" id="manual-has-options"> This is a multiple-choice question (add options)
-      </label>
-      <div id="manual-options-block" style="display:none;">
-        <div class="opt-row"><span class="opt-label mono">A)</span><input type="text" id="manual-opt-a" placeholder="Option A" style="flex:1;"><input type="radio" name="manual-correct-opt" value="A" title="Correct answer"></div>
-        <div class="opt-row"><span class="opt-label mono">B)</span><input type="text" id="manual-opt-b" placeholder="Option B" style="flex:1;"><input type="radio" name="manual-correct-opt" value="B" title="Correct answer"></div>
-        <div class="opt-row"><span class="opt-label mono">C)</span><input type="text" id="manual-opt-c" placeholder="Option C (optional)" style="flex:1;"><input type="radio" name="manual-correct-opt" value="C" title="Correct answer"></div>
-        <div class="opt-row"><span class="opt-label mono">D)</span><input type="text" id="manual-opt-d" placeholder="Option D (optional)" style="flex:1;"><input type="radio" name="manual-correct-opt" value="D" title="Correct answer"></div>
-        <p class="hint">Tick the radio next to the correct option. The Answer box below is only needed for descriptive/numerical questions.</p>
+      <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
+        <button class="btn ghost small tab-btn active" id="add-mode-paste" type="button">Paste multiple questions</button>
+        <button class="btn ghost small tab-btn" id="add-mode-manual" type="button">Add one manually</button>
       </div>
 
-      <div class="qedit-label">Answer (text + images — descriptive/numerical questions only)</div>
-      <div class="qedit" contenteditable="true" id="manual-answer"></div>
-      <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" id="manual-answer-img"></label>
-      <p class="hint" id="manual-status" style="margin-top:8px;"></p>
-      <div class="btn-row" style="margin-top:0;">
-        <button class="btn" id="manual-add" type="button">Add to question bank</button>
+      <div id="add-mode-paste-panel">
+        <p class="hint">Paste a block of questions — from Word, a PDF, anywhere — numbered, with options and answers in more or less any reasonable format. This splits it into structured questions for you to review before anything is added.</p>
+        <textarea id="import-textarea" rows="10" style="width:100%; font-family:'IBM Plex Sans'; font-size:13px; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--white); color:var(--ink); resize:vertical;" placeholder="1. Which of the following is a method of underground mining?&#10;A) Open cast mining&#10;B) Room and pillar mining&#10;C) Hydraulic mining&#10;D) Placer mining&#10;Answer: B&#10;&#10;2. ..."></textarea>
+        <details style="margin-top:10px;">
+          <summary class="hint" style="cursor:pointer;">Common defaults for this paste (optional)</summary>
+          <div class="filters" style="margin-top:8px;">
+            <input type="text" id="import-def-subject" placeholder="Subject" list="manual-subject-list" style="min-width:130px;">
+            <input type="text" id="import-def-topic" placeholder="Topic/Chapter" list="manual-topic-list" style="min-width:140px;">
+            <input type="text" id="import-def-section" placeholder="Section" list="manual-section-list" style="min-width:130px;">
+            <input type="number" id="import-def-marks" placeholder="Marks" step="0.5" min="0" style="max-width:80px;">
+            <input type="text" id="import-def-type" placeholder="Type" list="manual-type-list" style="min-width:110px;">
+            <input type="number" id="import-def-negmarks" placeholder="Neg. marks" step="0.25" min="0" style="max-width:110px;">
+          </div>
+        </details>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn" id="import-parse-btn" type="button">Parse text</button>
+        </div>
+        <div id="import-meta-slot"></div>
+        <div id="import-preview-slot"></div>
+        <div class="btn-row" id="import-commit-row" style="display:none;">
+          <button class="btn" id="import-commit-btn" type="button">Add to question bank</button>
+          <button class="btn ghost small" id="import-discard-btn" type="button">Discard preview</button>
+        </div>
+      </div>
+
+      <div id="add-mode-manual-panel" style="display:none;">
+        <p class="hint">Write your own question and answer — with images if needed — straight into the bank.</p>
+        <div class="filters">
+          <input type="text" id="manual-subject" placeholder="Subject (e.g. Physics)" list="manual-subject-list" style="min-width:140px;">
+          <datalist id="manual-subject-list"></datalist>
+          <input type="number" id="manual-marks" placeholder="Marks" step="0.5" min="0" style="max-width:90px;">
+          <input type="text" id="manual-type" placeholder="Type (e.g. MCQ, Short Answer)" list="manual-type-list" style="min-width:160px;">
+          <datalist id="manual-type-list"></datalist>
+        </div>
+        <div class="qedit-label">Question (text + images)</div>
+        <div class="qedit" contenteditable="true" id="manual-question"></div>
+        <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" id="manual-question-img"></label>
+
+        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; margin:12px 0 6px; cursor:pointer;">
+          <input type="checkbox" id="manual-has-options"> This is a multiple-choice question (add options)
+        </label>
+        <div id="manual-options-block" style="display:none;">
+          <div class="opt-row"><span class="opt-label mono">A)</span><input type="text" id="manual-opt-a" placeholder="Option A" style="flex:1;"><input type="radio" name="manual-correct-opt" value="A" title="Correct answer"></div>
+          <div class="opt-row"><span class="opt-label mono">B)</span><input type="text" id="manual-opt-b" placeholder="Option B" style="flex:1;"><input type="radio" name="manual-correct-opt" value="B" title="Correct answer"></div>
+          <div class="opt-row"><span class="opt-label mono">C)</span><input type="text" id="manual-opt-c" placeholder="Option C (optional)" style="flex:1;"><input type="radio" name="manual-correct-opt" value="C" title="Correct answer"></div>
+          <div class="opt-row"><span class="opt-label mono">D)</span><input type="text" id="manual-opt-d" placeholder="Option D (optional)" style="flex:1;"><input type="radio" name="manual-correct-opt" value="D" title="Correct answer"></div>
+          <p class="hint">Tick the radio next to the correct option. The Answer box below is only needed for descriptive/numerical questions.</p>
+        </div>
+
+        <div class="qedit-label">Answer (text + images — descriptive/numerical questions only)</div>
+        <div class="qedit" contenteditable="true" id="manual-answer"></div>
+        <label class="btn ghost small img-upload-label">+ image<input type="file" accept="image/*" id="manual-answer-img"></label>
+
+        <details style="margin-top:10px;">
+          <summary class="hint" style="cursor:pointer;">More fields — topic, section, negative marking (optional)</summary>
+          <div class="filters" style="margin-top:8px;">
+            <input type="text" id="manual-topic" placeholder="Topic/Chapter" list="manual-topic-list" style="min-width:160px;">
+            <datalist id="manual-topic-list"></datalist>
+            <input type="text" id="manual-section" placeholder="Section, e.g. Section A" list="manual-section-list" style="min-width:160px;">
+            <datalist id="manual-section-list"></datalist>
+            <input type="number" id="manual-negmarks" placeholder="Negative marks" step="0.25" min="0" style="max-width:150px;">
+          </div>
+        </details>
+
+        <p class="hint" id="manual-status" style="margin-top:8px;"></p>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn" id="manual-add" type="button">Add to question bank</button>
+        </div>
       </div>
     </div>
 
     <div class="card">
-      <h3>Import / paste questions</h3>
-      <p class="hint">Paste a block of plain text — numbered questions, options, and answers in more or less any reasonable format — and this will try to split it into structured questions for you to review before anything is added to the bank. Nothing is added until you review the preview below and click "Add to question bank".</p>
+      <details id="messy-source-details">
+        <summary style="cursor:pointer; font-weight:600; font-size:14px;">Working from a scan, photo, or messy document? (optional tools)</summary>
 
-      <div class="qedit-label">Common defaults for this paste (optional — only fills in what the text itself doesn't specify)</div>
-      <div class="filters">
-        <input type="text" id="import-def-subject" placeholder="Subject" list="manual-subject-list" style="min-width:130px;">
-        <input type="text" id="import-def-topic" placeholder="Topic/Chapter" list="manual-topic-list" style="min-width:140px;">
-        <input type="text" id="import-def-section" placeholder="Section" list="manual-section-list" style="min-width:130px;">
-        <input type="number" id="import-def-marks" placeholder="Marks" step="0.5" min="0" style="max-width:80px;">
-        <input type="text" id="import-def-type" placeholder="Type" list="manual-type-list" style="min-width:110px;">
-        <input type="number" id="import-def-negmarks" placeholder="Neg. marks" step="0.25" min="0" style="max-width:110px;">
-      </div>
+        <p class="hint" style="margin-top:10px;">Two ways to turn something messy into text the paste box above can read. The AI prompt is usually the more reliable of the two for photos/scans — this site's built-in OCR is a reasonable fallback when you don't have an AI tool handy, but it can struggle with poor scans, handwriting, or complex layouts.</p>
 
-      <div class="qedit-label">Paste text</div>
-      <textarea id="import-textarea" rows="10" style="width:100%; font-family:'IBM Plex Sans'; font-size:13px; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--white); color:var(--ink); resize:vertical;" placeholder="1. Which of the following is a method of underground mining?&#10;A) Open cast mining&#10;B) Room and pillar mining&#10;C) Hydraulic mining&#10;D) Placer mining&#10;Answer: B&#10;&#10;2. ..."></textarea>
-      <div class="btn-row" style="margin-top:0;">
-        <button class="btn ghost small" id="import-parse-btn" type="button">Parse text</button>
-      </div>
+        <h3 style="font-size:13.5px; margin-top:16px;">Option A — format it with ChatGPT or another AI tool</h3>
+        <p class="hint">Copy this prompt, paste it into ChatGPT (or similar) along with your scan/photo/PDF, then paste its output into the box above. Following this format exactly means it will be read correctly.</p>
+        <textarea id="ai-prompt-text" readonly rows="15" style="width:100%; font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:10px; border:1px solid var(--paper-line); border-radius:2px; background:var(--paper); color:var(--ink); resize:vertical;">I have exam/question content that needs reformatting into a specific plain-text format for a question-bank tool. Convert the content I give you into this exact format and output ONLY the reformatted text, no commentary:
 
-      <div id="import-meta-slot"></div>
-      <div id="import-preview-slot"></div>
-      <div class="btn-row" id="import-commit-row" style="display:none;">
-        <button class="btn" id="import-commit-btn" type="button">Add to question bank</button>
-        <button class="btn ghost small" id="import-discard-btn" type="button">Discard preview</button>
-      </div>
-    </div>
+FORMAT RULES:
+1. Number every question sequentially: "1. ", "2. ", "3. " (number, period, space) at the start of a line — keep numbering continuous even across subjects/sections, don't restart at 1.
+2. Put the full question text right after the number (it can wrap onto following lines).
+3. If it's multiple-choice, list each option on its own line starting with the letter and a closing parenthesis: "A) ", "B) ", "C) ", "D) ".
+4. Give the correct answer on its own line starting with "Answer: " — the option letter for MCQs (e.g. "Answer: B"), or the full answer text for non-MCQ questions.
+5. Leave one blank line between questions.
+6. If a question's marks aren't already covered by a section rule (see rule 7), put them in square brackets right after the question text, like "[3 Marks]".
+7. If the paper has fixed marks per section, state that once near the top, exactly like: "Section A - 1 marks each" (one line per section).
+8. If there's negative marking, state it once near the top, exactly like: "+4 for correct, -1 for incorrect".
+9. If it covers multiple subjects: near the top, list each one like "Physics: 30 questions x 1 mark" (using the actual counts/marks you observe) — then put that subject's name alone on its own line immediately before its block of questions (e.g. just "Physics").
+10. If duration or total marks are stated in the source, include them near the top as "Duration: 3 hours" and "Total Marks: 100".
+11. Do not invent or guess anything not actually present in the source — if a question has no visible answer, options, or marks, just leave that part out rather than making something up.
 
-    <div class="card">
-      <h3>OCR upload (scanned PDFs, images, .txt, .docx)</h3>
-      <p class="hint">For source material that isn't a clean structured question bank — a scanned worksheet, a photographed page, a plain text file, or a docx that didn't parse cleanly — this pulls out the raw text (entirely in your browser) so you can review it and copy pieces into the manual-entry form above.</p>
-      <div class="dropzone" id="ocr-dropzone">
-        <div id="ocr-dz-label">Click to choose a PDF, image, .txt, or .docx file, or drag one here</div>
-        <input type="file" id="ocr-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.txt,.docx">
-      </div>
-      <p class="hint" id="ocr-status" style="margin-top:10px;"></p>
-      <div class="qedit-label" id="ocr-result-label" style="display:none;">Extracted text (edit freely, then send it into a manual-entry box)</div>
-      <div class="qedit" id="ocr-result" contenteditable="true" style="display:none; white-space:pre-wrap;"></div>
-      <div class="btn-row" id="ocr-actions" style="display:none;">
-        <button class="btn ghost small" id="ocr-send-question" type="button">Send to manual Question box</button>
-        <button class="btn ghost small" id="ocr-send-answer" type="button">Send to manual Answer box</button>
-      </div>
+Here is the content to convert:
+[paste or attach your content here]</textarea>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn ghost small" id="copy-ai-prompt-btn" type="button">Copy prompt</button>
+        </div>
+
+        <h3 style="font-size:13.5px; margin-top:20px;">Option B — this site's built-in OCR</h3>
+        <p class="hint">Runs entirely in your browser — nothing is uploaded anywhere else.</p>
+        <div class="dropzone" id="ocr-dropzone">
+          <div id="ocr-dz-label">Click to choose a PDF, image, .txt, or .docx file, or drag one here</div>
+          <input type="file" id="ocr-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.txt,.docx">
+        </div>
+        <p class="hint" id="ocr-status" style="margin-top:10px;"></p>
+        <div class="qedit-label" id="ocr-result-label" style="display:none;">Extracted text (edit freely, then send it to the paste box)</div>
+        <div class="qedit" id="ocr-result" contenteditable="true" style="display:none; white-space:pre-wrap;"></div>
+        <div class="btn-row" id="ocr-actions" style="display:none;">
+          <button class="btn ghost small" id="ocr-send-paste" type="button">Send to paste box above</button>
+        </div>
+      </details>
     </div>
 
     <div class="card">
@@ -369,15 +405,13 @@ import {
 
 // TODO: replace with YOUR OWN Firebase project's config — see SETUP.md.
 // This is safe to leave visible in client code; it is not a secret key.
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDGmuIRkIHhB1xbhpJiqI82ejRu1_4eGRI",
-  authDomain: "paper-trail-700fb.firebaseapp.com",
-  projectId: "paper-trail-700fb",
-  storageBucket: "paper-trail-700fb.firebasestorage.app",
-  messagingSenderId: "721631882983",
-  appId: "1:721631882983:web:eb885b7a85fceecbc67c42",
-  measurementId: "G-2LBYL6ETWD"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -562,7 +596,7 @@ function subjectRuleAt(examMeta, index){
 }
 
 function splitIntoQuestionBlocks(text){
-  const qStartRe = /^[ \t]*(?:Q\.?\s*)?(\d{1,3})[.).:]\s+(?=\S)/gm;
+  const qStartRe = /^[ \t]*(?:Q\.?\s*)?(\d{1,3})[.).:\-]\s+(?=\S)/gm;
   const starts = [];
   let m;
   while((m = qStartRe.exec(text))) starts.push({ index: m.index, contentStart: m.index + m[0].length, number: m[1] });
@@ -577,7 +611,7 @@ function splitIntoQuestionBlocks(text){
 function parseOptionsAndAnswer(blockText){
   const lines = blockText.split('\n');
   const optRe = /^[ \t]*[(\[]?([A-Da-d])[)\].:]\s+(.*)$/;
-  const ansRe = /^[ \t]*(?:Answer|Ans)\.?\s*[:\-]?\s*(.*)$/i;
+  const ansRe = /^[ \t]*(?:Answer|Ans|Correct\s*(?:Option|Answer))\.?\s*[:\-]?\s*(.*)$/i;
   let stemLines = [], options = [], answerRaw = null, mode = 'stem';
   for(const line of lines){
     const ansMatch = line.match(ansRe);
@@ -588,16 +622,43 @@ function parseOptionsAndAnswer(blockText){
     if(mode === 'stem') stemLines.push(line);
     else if(mode === 'options' && line.trim() && options.length) options[options.length-1].text += ' ' + line.trim();
   }
+
+  // Fallback for options pasted on the same line(s) as the stem — common when
+  // copying a table/multi-column layout out of Word. Look for 2+ "A) ..." style
+  // markers separated by a run of spaces/tabs (rather than one per line) and
+  // split on those instead.
+  if(!options.length){
+    const wholeText = stemLines.join('\n');
+    const inlineRe = /(?:^|[ \t]{2,})([A-Da-d])[)\.]\s+/g;
+    const hits = [...wholeText.matchAll(inlineRe)];
+    if(hits.length >= 2){
+      const newStem = wholeText.slice(0, hits[0].index).trim();
+      const newOptions = hits.map((h,i)=>{
+        const start = h.index + h[0].length;
+        const end = (i+1 < hits.length) ? hits[i+1].index : wholeText.length;
+        return { label: h[1].toUpperCase(), text: wholeText.slice(start, end).trim() };
+      }).filter(o=>o.text);
+      if(newOptions.length >= 2){ stemLines = [newStem]; options = newOptions; }
+    }
+  }
   return { stem: stemLines.join('\n').trim(), options: options.length ? options : null, answerRaw };
 }
 function resolveAnswerHtml(answerRaw, options){
   if(!answerRaw) return { html: '', letter: null };
   let mLetter = answerRaw.match(/^\(?([A-Da-d])\)?\s*[.:)]?\s*(.*)$/);
-  if(mLetter && (mLetter[1].length===1) && (options || !mLetter[2])){
+  if(mLetter && (options || !mLetter[2])){
     const letter = mLetter[1].toUpperCase();
     const opt = options ? options.find(o=>o.label === letter) : null;
     const rest = opt ? opt.text : mLetter[2];
     return { html: rest ? `<p><b>${letter})</b> ${escapeHtml(rest)}</p>` : `<p><b>${letter}</b></p>`, letter };
+  }
+  // Answer given as the option's full text rather than a letter, e.g.
+  // "Answer: Room and pillar mining" — match it against the options.
+  if(options){
+    const norm = s=>s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    const target = norm(answerRaw);
+    const match = options.find(o=>norm(o.text) === target || (target.length>3 && norm(o.text).includes(target)));
+    if(match) return { html: `<p><b>${match.label})</b> ${escapeHtml(match.text)}</p>`, letter: match.label };
   }
   return { html: `<p>${escapeHtml(answerRaw)}</p>`, letter: null };
 }
@@ -780,6 +841,16 @@ function renderUploadList(){
     </div>`).join('');
 }
 
+/* ---- Add-questions mode toggle (paste multiple vs. add one manually) ---- */
+function setAddMode(mode){
+  document.getElementById('add-mode-paste').classList.toggle('active', mode==='paste');
+  document.getElementById('add-mode-manual').classList.toggle('active', mode==='manual');
+  document.getElementById('add-mode-paste-panel').style.display = mode==='paste' ? 'block' : 'none';
+  document.getElementById('add-mode-manual-panel').style.display = mode==='manual' ? 'block' : 'none';
+}
+document.getElementById('add-mode-paste').addEventListener('click', ()=>setAddMode('paste'));
+document.getElementById('add-mode-manual').addEventListener('click', ()=>setAddMode('manual'));
+
 /* ---- Manual question entry ---- */
 function populateManualDatalists(){
   const subjects = [...new Set(state.bank.map(q=>q.subject).filter(Boolean))];
@@ -937,11 +1008,25 @@ document.getElementById('ocr-file-input').addEventListener('change', e=>{ if(e.t
     if(evt==='drop' && e.dataTransfer.files[0]) handleOcrFile(e.dataTransfer.files[0]);
   });
 });
-document.getElementById('ocr-send-question').addEventListener('click', ()=>{
-  document.getElementById('manual-question').innerText = document.getElementById('ocr-result').innerText;
+document.getElementById('ocr-send-paste').addEventListener('click', ()=>{
+  const ocrText = document.getElementById('ocr-result').innerText;
+  const textarea = document.getElementById('import-textarea');
+  textarea.value = textarea.value ? textarea.value + '\n\n' + ocrText : ocrText;
+  setAddMode('paste');
+  textarea.scrollIntoView({behavior:'smooth', block:'center'});
 });
-document.getElementById('ocr-send-answer').addEventListener('click', ()=>{
-  document.getElementById('manual-answer').innerText = document.getElementById('ocr-result').innerText;
+document.getElementById('copy-ai-prompt-btn').addEventListener('click', async e=>{
+  const btn = e.currentTarget;
+  const promptEl = document.getElementById('ai-prompt-text');
+  const oldLabel = btn.textContent;
+  try{
+    await navigator.clipboard.writeText(promptEl.value);
+    btn.textContent = 'Copied!';
+  }catch(err){
+    promptEl.select();
+    btn.textContent = 'Selected — press Ctrl+C';
+  }
+  setTimeout(()=>{ btn.textContent = oldLabel; }, 2000);
 });
 
 /* ---- Import / paste questions (bulk text -> structured preview -> bank) ---- */
